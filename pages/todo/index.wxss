@@ -1,1 +1,5 @@
 @import "../../app.wxss";
+
+.priority-row {
+  margin-top: 12rpx;
+}

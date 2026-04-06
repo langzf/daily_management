@@ -2,17 +2,35 @@
   <view class="card">
     <view class="section-title">新增待办</view>
     <input class="input" placeholder="输入待办内容" value="{{newText}}" bindinput="onInput" />
+    <view class="priority-row">
+      <text class="muted">优先级：</text>
+      <view class="chip-group">
+        <view class="chip {{newPriority === 'low' ? 'chip-active' : ''}}" data-value="low" bindtap="onPriorityChange">低</view>
+        <view class="chip {{newPriority === 'medium' ? 'chip-active' : ''}}" data-value="medium" bindtap="onPriorityChange">中</view>
+        <view class="chip {{newPriority === 'high' ? 'chip-active' : ''}}" data-value="high" bindtap="onPriorityChange">高</view>
+      </view>
+    </view>
     <button class="button" bindtap="addTodo">添加</button>
   </view>
 
   <view class="card">
-    <view class="section-title">待办列表</view>
-    <block wx:if="{{list.length === 0}}">
+    <view class="row">
+      <view class="section-title" style="margin-bottom: 0;">待办列表</view>
+      <text class="muted">总{{stats.total}} / 未完成{{stats.active}}</text>
+    </view>
+    <view class="chip-group" style="margin: 10rpx 0 8rpx;">
+      <view class="chip {{filter === 'all' ? 'chip-active' : ''}}" data-value="all" bindtap="setFilter">全部</view>
+      <view class="chip {{filter === 'active' ? 'chip-active' : ''}}" data-value="active" bindtap="setFilter">未完成</view>
+      <view class="chip {{filter === 'done' ? 'chip-active' : ''}}" data-value="done" bindtap="setFilter">已完成</view>
+      <view class="chip" wx:if="{{stats.done > 0}}" bindtap="clearCompleted">清空已完成</view>
+    </view>
+    <block wx:if="{{displayList.length === 0}}">
       <view class="muted">暂无待办，开始安排今天的任务吧。</view>
     </block>
-    <block wx:for="{{list}}" wx:key="id">
+    <block wx:for="{{displayList}}" wx:key="id">
       <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
         <view style="flex:1;">
+          <view class="badge {{item.priority}}">{{item.priority === 'high' ? '高优先级' : (item.priority === 'medium' ? '中优先级' : '低优先级')}}</view>
           <text style="text-decoration: {{item.done ? 'line-through' : 'none'}};">{{item.text}}</text>
         </view>
         <button size="mini" bindtap="toggle" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
