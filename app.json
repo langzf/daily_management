@@ -3,7 +3,8 @@
     "pages/todo/index",
     "pages/habit/index",
     "pages/schedule/index",
-    "pages/finance/index"
+    "pages/finance/index",
+    "pages/data/index"
   ],
   "window": {
     "navigationBarTitleText": "Daily Management",

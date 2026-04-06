@@ -1,4 +1,7 @@
 <view class="container">
+  <view class="row" style="justify-content:flex-end; margin-bottom:10rpx;">
+    <navigator class="chip" url="/pages/data/index">数据管理</navigator>
+  </view>
   <view class="card">
     <view class="section-title">新增习惯</view>
     <input class="input" placeholder="例如：晨跑20分钟" value="{{newName}}" bindinput="onInput" />

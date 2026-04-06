@@ -4,7 +4,8 @@ const requiredPages = [
   'pages/todo/index',
   'pages/habit/index',
   'pages/schedule/index',
-  'pages/finance/index'
+  'pages/finance/index',
+  'pages/data/index'
 ];
 for (const p of requiredPages) {
   if (!app.pages.includes(p)) {

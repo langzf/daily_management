@@ -1,0 +1,16 @@
+@import "../../app.wxss";
+
+.textarea {
+  width: 100%;
+  min-height: 220rpx;
+  border: 1rpx solid #d9e1ec;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 24rpx;
+}
+
+.danger {
+  background: #dc2626;
+}

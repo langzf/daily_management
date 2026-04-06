@@ -5,7 +5,9 @@ const required = [
   'pages/todo/index.js',
   'pages/habit/index.js',
   'pages/schedule/index.js',
-  'pages/finance/index.js'
+  'pages/finance/index.js',
+  'pages/data/index.js',
+  'pages/data/index.wxml'
 ];
 const missing = required.filter((f) => !fs.existsSync(f));
 if (missing.length) {

@@ -6,6 +6,7 @@ A personal daily management WeChat Mini Program with four core modules:
 - Habit Check-in
 - Schedule Reminder
 - Expense Ledger
+- Data Backup/Restore
 
 ## Project Directory (Single Source of Truth)
 

@@ -1,4 +1,7 @@
 <view class="container">
+  <view class="row" style="justify-content:flex-end; margin-bottom:10rpx;">
+    <navigator class="chip" url="/pages/data/index">数据管理</navigator>
+  </view>
   <view class="card">
     <view class="section-title">新增日程</view>
     <input class="input" placeholder="事项名称" value="{{title}}" bindinput="onTitle" />
