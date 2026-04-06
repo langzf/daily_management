@@ -1,0 +1,10 @@
+{
+  "name": "daily-management-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Backend API service for Daily Management WeChat Mini Program",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node tests/snapshot_api.test.js"
+  }
+}

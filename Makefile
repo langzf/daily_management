@@ -27,3 +27,9 @@ deploy:
 
 rollback:
 	npm run rollback
+
+backend-start:
+	npm run backend:start
+
+backend-test:
+	npm run backend:test

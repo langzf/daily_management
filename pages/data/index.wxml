@@ -12,7 +12,7 @@
   <view class="card">
     <view class="section-title">导出备份</view>
     <view class="muted" wx:if="{{lastExportAt}}" style="margin-bottom: 10rpx;">最近导出：{{lastExportAt}}</view>
-    <view class="row" style="justify-content: flex-start; gap: 12rpx; margin-bottom: 12rpx;">
+    <view class="row" style="justify-content: flex-start; gap: 12rpx; margin-bottom: 12rpx; flex-wrap: wrap;">
       <button size="mini" bindtap="generateExport">生成导出内容</button>
       <button size="mini" bindtap="copyExport">复制到剪贴板</button>
     </view>
@@ -24,6 +24,25 @@
     <view class="muted" style="margin-bottom: 10rpx;">请粘贴完整导出 JSON，导入会覆盖现有四个模块数据。</view>
     <textarea class="textarea" value="{{importText}}" placeholder="在此粘贴导出 JSON" maxlength="-1" bindinput="onImportInput"></textarea>
     <button class="button" bindtap="importData">执行导入</button>
+  </view>
+
+  <view class="card">
+    <view class="section-title">后端同步（可选）</view>
+    <view class="muted" style="margin-bottom: 12rpx;">用于多端共享与长期存档；本地功能不依赖后端。</view>
+
+    <view class="field-label">API 地址</view>
+    <input class="input" value="{{apiBaseUrl}}" placeholder="例如 http://127.0.0.1:8787" bindinput="onApiBaseUrlInput" />
+
+    <view class="field-label" style="margin-top: 12rpx;">用户 ID</view>
+    <input class="input" value="{{apiUserId}}" placeholder="例如 demo_user" bindinput="onApiUserIdInput" />
+
+    <view class="row sync-actions">
+      <button size="mini" bindtap="saveSyncConfig">保存配置</button>
+      <button size="mini" bindtap="uploadToServer">上传到后端</button>
+      <button size="mini" bindtap="downloadFromServer">从后端下载</button>
+    </view>
+
+    <view class="muted sync-status" wx:if="{{syncStatus}}">状态：{{syncStatus}}</view>
   </view>
 
   <view class="card">

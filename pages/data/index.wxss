@@ -11,6 +11,23 @@
   font-size: 24rpx;
 }
 
+.field-label {
+  font-size: 24rpx;
+  color: #374151;
+  margin-bottom: 8rpx;
+}
+
+.sync-actions {
+  justify-content: flex-start;
+  gap: 12rpx;
+  flex-wrap: wrap;
+  margin-top: 16rpx;
+}
+
+.sync-status {
+  margin-top: 12rpx;
+}
+
 .danger {
   background: #dc2626;
 }

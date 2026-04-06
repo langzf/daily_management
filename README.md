@@ -8,6 +8,7 @@ A personal daily management WeChat Mini Program with four core modules:
 - Expense Ledger
 - Data Backup/Restore
 - Local Reminder Notifications
+- Backend Sync (optional)
 
 ## Project Directory (Single Source of Truth)
 
@@ -21,9 +22,25 @@ Orchestrator artifacts are synced into:
 
 ## Local Development
 
-1. Open the repository folder in WeChat DevTools.
-2. AppID can be replaced in `project.config.json`.
-3. Data is stored locally using WeChat storage APIs.
+1. Open `/Users/langzhifa/workspaces/daily_management` in WeChat DevTools.
+2. Confirm AppID in `project.config.json` is `wx906c18e761d86790`.
+3. To use backend sync, start backend service first.
+
+## Start Backend Service (SQLite)
+
+```bash
+cd /Users/langzhifa/workspaces/daily_management
+npm run backend:start
+```
+
+- Default URL: `http://127.0.0.1:8787`
+- Database: `backend/data/daily_management.sqlite`
+- Schema: `backend/db/schema.sql`
+
+Then in mini program Data page:
+
+1. Fill API URL and userId.
+2. Click `上传到后端` or `从后端下载`.
 
 ## Automation Commands
 
@@ -35,6 +52,8 @@ Orchestrator artifacts are synced into:
 - `make test-nfr`
 - `make scan-security`
 - `make package`
+- `make backend-start`
+- `make backend-test`
 
 These commands are designed to be called by the software-delivery-orchestrator pipeline.
 
