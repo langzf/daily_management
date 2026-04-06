@@ -14,13 +14,24 @@
       </picker>
     </view>
     <input class="input" style="margin-top:12rpx;" placeholder="标签（可选，如 工作/生活）" value="{{tag}}" bindinput="onTag" />
+    <view class="row" style="justify-content:flex-start; margin-top:12rpx;">
+      <text class="muted">开启提醒</text>
+      <switch checked="{{createRemindEnabled}}" bindchange="onCreateRemindSwitch"></switch>
+    </view>
+    <view wx:if="{{createRemindEnabled}}" class="chip-group" style="margin-top:10rpx;">
+      <view class="chip {{createRemindBeforeMin === 0 ? 'chip-active' : ''}}" data-min="0" bindtap="onCreateRemindMinutes">准点</view>
+      <view class="chip {{createRemindBeforeMin === 5 ? 'chip-active' : ''}}" data-min="5" bindtap="onCreateRemindMinutes">提前5分</view>
+      <view class="chip {{createRemindBeforeMin === 15 ? 'chip-active' : ''}}" data-min="15" bindtap="onCreateRemindMinutes">提前15分</view>
+      <view class="chip {{createRemindBeforeMin === 30 ? 'chip-active' : ''}}" data-min="30" bindtap="onCreateRemindMinutes">提前30分</view>
+      <view class="chip {{createRemindBeforeMin === 60 ? 'chip-active' : ''}}" data-min="60" bindtap="onCreateRemindMinutes">提前60分</view>
+    </view>
     <button class="button" bindtap="addSchedule">添加日程</button>
   </view>
 
   <view class="card">
     <view class="row">
       <view class="section-title" style="margin-bottom:0;">日程列表</view>
-      <text class="muted">总{{summary.total}} / 今日{{summary.today}} / 逾期{{summary.overdue}}</text>
+      <text class="muted">总{{summary.total}} / 今日{{summary.today}} / 逾期{{summary.overdue}} / 待提醒{{summary.dueReminder}}</text>
     </view>
     <view class="chip-group" style="margin: 10rpx 0 8rpx;">
       <view class="chip {{filter === 'all' ? 'chip-active' : ''}}" data-value="all" bindtap="setFilter">全部</view>
@@ -44,9 +55,21 @@
             <view class="badge {{item.status === 'overdue' ? 'high' : (item.status === 'today' ? 'medium' : 'low')}}">
               {{item.status === 'overdue' ? '逾期' : (item.status === 'today' ? '今日' : (item.status === 'done' ? '已完成' : '待办'))}}
             </view>
+            <view class="muted" wx:if="{{item.remindEnabled}}">
+              提醒：{{item.remindBeforeMin === 0 ? '准点' : ('提前' + item.remindBeforeMin + '分钟')}}
+            </view>
+            <view class="muted" wx:else>提醒：已关闭</view>
           </view>
           <button size="mini" bindtap="toggleDone" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
+          <button size="mini" bindtap="toggleReminder" data-id="{{item.id}}">{{item.remindEnabled ? '关提醒' : '开提醒'}}</button>
           <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        </view>
+        <view class="chip-group" style="margin-top:8rpx;" wx:if="{{!item.done}}">
+          <view class="chip {{item.remindEnabled && item.remindBeforeMin === 0 ? 'chip-active' : ''}}" data-id="{{item.id}}" data-min="0" bindtap="setItemReminderMinutes">准点</view>
+          <view class="chip {{item.remindEnabled && item.remindBeforeMin === 5 ? 'chip-active' : ''}}" data-id="{{item.id}}" data-min="5" bindtap="setItemReminderMinutes">5分</view>
+          <view class="chip {{item.remindEnabled && item.remindBeforeMin === 15 ? 'chip-active' : ''}}" data-id="{{item.id}}" data-min="15" bindtap="setItemReminderMinutes">15分</view>
+          <view class="chip {{item.remindEnabled && item.remindBeforeMin === 30 ? 'chip-active' : ''}}" data-id="{{item.id}}" data-min="30" bindtap="setItemReminderMinutes">30分</view>
+          <view class="chip {{item.remindEnabled && item.remindBeforeMin === 60 ? 'chip-active' : ''}}" data-id="{{item.id}}" data-min="60" bindtap="setItemReminderMinutes">60分</view>
         </view>
       </view>
     </block>
