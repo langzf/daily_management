@@ -1,0 +1,39 @@
+{
+  "pages": [
+    "pages/todo/index",
+    "pages/habit/index",
+    "pages/schedule/index",
+    "pages/finance/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "Daily Management",
+    "navigationBarBackgroundColor": "#1677ff",
+    "navigationBarTextStyle": "white",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/todo/index",
+        "text": "待办"
+      },
+      {
+        "pagePath": "pages/habit/index",
+        "text": "打卡"
+      },
+      {
+        "pagePath": "pages/schedule/index",
+        "text": "日程"
+      },
+      {
+        "pagePath": "pages/finance/index",
+        "text": "记账"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

@@ -1,0 +1,18 @@
+{
+  "name": "daily_management",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Daily management WeChat mini program",
+  "scripts": {
+    "lint": "node scripts/lint.js",
+    "build": "node scripts/build.js",
+    "test:unit": "node scripts/test_unit.js",
+    "test:integration": "node scripts/test_integration.js",
+    "test:e2e": "node scripts/test_e2e.js",
+    "test:nfr": "node scripts/test_nfr.js",
+    "scan:security": "node scripts/scan_security.js",
+    "package": "node scripts/package.js",
+    "deploy": "node scripts/deploy.js",
+    "rollback": "node scripts/rollback.js"
+  }
+}

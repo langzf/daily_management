@@ -1,0 +1,23 @@
+<view class="container">
+  <view class="card">
+    <view class="section-title">新增习惯</view>
+    <input class="input" placeholder="例如：晨跑20分钟" value="{{newName}}" bindinput="onInput" />
+    <button class="button" bindtap="addHabit">添加习惯</button>
+  </view>
+
+  <view class="card">
+    <view class="section-title">今日打卡</view>
+    <block wx:if="{{list.length === 0}}">
+      <view class="muted">暂无习惯，先添加一个打卡目标。</view>
+    </block>
+    <block wx:for="{{list}}" wx:key="id">
+      <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
+        <view style="flex:1;">
+          <view>{{item.name}}</view>
+          <view class="muted">连续 {{item.streak}} 天</view>
+        </view>
+        <button size="mini" bindtap="checkIn" data-id="{{item.id}}">{{item.checkedToday ? '已打卡' : '打卡'}}</button>
+      </view>
+    </block>
+  </view>
+</view>

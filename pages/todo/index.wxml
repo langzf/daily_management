@@ -1,0 +1,23 @@
+<view class="container">
+  <view class="card">
+    <view class="section-title">新增待办</view>
+    <input class="input" placeholder="输入待办内容" value="{{newText}}" bindinput="onInput" />
+    <button class="button" bindtap="addTodo">添加</button>
+  </view>
+
+  <view class="card">
+    <view class="section-title">待办列表</view>
+    <block wx:if="{{list.length === 0}}">
+      <view class="muted">暂无待办，开始安排今天的任务吧。</view>
+    </block>
+    <block wx:for="{{list}}" wx:key="id">
+      <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
+        <view style="flex:1;">
+          <text style="text-decoration: {{item.done ? 'line-through' : 'none'}};">{{item.text}}</text>
+        </view>
+        <button size="mini" bindtap="toggle" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
+        <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+      </view>
+    </block>
+  </view>
+</view>

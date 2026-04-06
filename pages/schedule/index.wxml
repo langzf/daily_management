@@ -1,0 +1,26 @@
+<view class="container">
+  <view class="card">
+    <view class="section-title">新增日程</view>
+    <input class="input" placeholder="事项名称" value="{{title}}" bindinput="onTitle" />
+    <input class="input" style="margin-top:12rpx;" placeholder="时间（例如 2026-04-07 09:00）" value="{{timeText}}" bindinput="onTime" />
+    <button class="button" bindtap="addSchedule">添加日程</button>
+  </view>
+
+  <view class="card">
+    <view class="section-title">日程列表</view>
+    <block wx:if="{{list.length === 0}}">
+      <view class="muted">暂无日程。</view>
+    </block>
+    <block wx:for="{{list}}" wx:key="id">
+      <view style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
+        <view class="row">
+          <view style="flex:1;">
+            <view>{{item.title}}</view>
+            <view class="muted">{{item.timeText}}</view>
+          </view>
+          <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>

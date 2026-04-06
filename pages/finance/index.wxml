@@ -1,0 +1,25 @@
+<view class="container">
+  <view class="card">
+    <view class="section-title">新增账单</view>
+    <input class="input" placeholder="用途（如 午餐）" value="{{note}}" bindinput="onNote" />
+    <input class="input" style="margin-top:12rpx;" placeholder="金额（元）" value="{{amount}}" bindinput="onAmount" type="digit" />
+    <button class="button" bindtap="addRecord">添加账单</button>
+  </view>
+
+  <view class="card">
+    <view class="section-title">账单明细</view>
+    <view class="muted" style="margin-bottom:12rpx;">总支出：¥{{total}}</view>
+    <block wx:if="{{list.length === 0}}">
+      <view class="muted">暂无账单。</view>
+    </block>
+    <block wx:for="{{list}}" wx:key="id">
+      <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
+        <view style="flex:1;">
+          <view>{{item.note}}</view>
+          <view class="muted">¥{{item.amount}}</view>
+        </view>
+        <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+      </view>
+    </block>
+  </view>
+</view>
