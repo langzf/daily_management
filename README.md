@@ -7,6 +7,16 @@ A personal daily management WeChat Mini Program with four core modules:
 - Schedule Reminder
 - Expense Ledger
 
+## Project Directory (Single Source of Truth)
+
+All code and project delivery documents are kept under:
+
+- `/Users/langzhifa/workspaces/daily_management`
+
+Orchestrator artifacts are synced into:
+
+- `docs/delivery-artifacts/`
+
 ## Local Development
 
 1. Open the repository folder in WeChat DevTools.
@@ -25,3 +35,11 @@ A personal daily management WeChat Mini Program with four core modules:
 - `make package`
 
 These commands are designed to be called by the software-delivery-orchestrator pipeline.
+
+## Sync Orchestrator Artifacts to This Repo
+
+Run:
+
+- `bash scripts/sync_orchestrator_artifacts.sh`
+
+This syncs stage artifacts from `~/.codex/skills/*/artifacts` into this repository at `docs/delivery-artifacts/`.

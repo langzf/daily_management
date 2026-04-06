@@ -1,0 +1,41 @@
+openapi: 3.0.3
+info:
+  title: Core Workflow API
+  version: 1.0.0
+x-traceability-ids:
+  - REQ-001
+  - REQ-002
+paths:
+  /orders:
+    post:
+      summary: Create order
+      operationId: createOrder
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Invalid request
+  /orders/{orderId}:
+    get:
+      summary: Get order
+      operationId: getOrder
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not found
+components:
+  schemas:
+    Order:
+      type: object
+      properties:
+        orderId:
+          type: string
+        status:
+          type: string
