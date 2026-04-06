@@ -2,21 +2,53 @@
   <view class="card">
     <view class="section-title">新增账单</view>
     <input class="input" placeholder="用途（如 午餐）" value="{{note}}" bindinput="onNote" />
+    <view class="chip-group" style="margin-top: 12rpx;">
+      <view class="chip {{type === 'expense' ? 'chip-active' : ''}}" data-value="expense" bindtap="onTypeChange">支出</view>
+      <view class="chip {{type === 'income' ? 'chip-active' : ''}}" data-value="income" bindtap="onTypeChange">收入</view>
+    </view>
+    <input class="input" style="margin-top:12rpx;" placeholder="分类（如 餐饮/工资）" value="{{category}}" bindinput="onCategory" />
+    <view class="chip-group" style="margin-top:10rpx;">
+      <view class="chip" data-value="餐饮" bindtap="onQuickCategory">餐饮</view>
+      <view class="chip" data-value="交通" bindtap="onQuickCategory">交通</view>
+      <view class="chip" data-value="购物" bindtap="onQuickCategory">购物</view>
+      <view class="chip" data-value="居家" bindtap="onQuickCategory">居家</view>
+      <view class="chip" data-value="学习" bindtap="onQuickCategory">学习</view>
+      <view class="chip" data-value="工资" bindtap="onQuickCategory">工资</view>
+      <view class="chip" data-value="其他" bindtap="onQuickCategory">其他</view>
+    </view>
+    <picker mode="date" value="{{dateText}}" bindchange="onDateChange" style="margin-top:12rpx;">
+      <view class="input picker-like">{{dateText || '选择日期'}}</view>
+    </picker>
     <input class="input" style="margin-top:12rpx;" placeholder="金额（元）" value="{{amount}}" bindinput="onAmount" type="digit" />
     <button class="button" bindtap="addRecord">添加账单</button>
   </view>
 
   <view class="card">
-    <view class="section-title">账单明细</view>
-    <view class="muted" style="margin-bottom:12rpx;">总支出：¥{{total}}</view>
-    <block wx:if="{{list.length === 0}}">
+    <view class="row">
+      <view class="section-title" style="margin-bottom:0;">账单明细</view>
+      <text class="muted">{{filterMonth ? (filterMonth + ' 月') : '全部月份'}}</text>
+    </view>
+    <view class="row" style="margin:10rpx 0;">
+      <text class="muted">收入：¥{{summary.income}}</text>
+      <text class="muted">支出：¥{{summary.expense}}</text>
+      <text class="muted">结余：¥{{summary.balance}}</text>
+    </view>
+    <view class="row" style="justify-content:flex-start; gap:12rpx; margin-bottom:10rpx;">
+      <picker mode="date" bindchange="onFilterMonthChange">
+        <view class="chip">选择月份</view>
+      </picker>
+      <view class="chip" wx:if="{{filterMonth}}" bindtap="clearMonthFilter">查看全部</view>
+    </view>
+    <block wx:if="{{displayList.length === 0}}">
       <view class="muted">暂无账单。</view>
     </block>
-    <block wx:for="{{list}}" wx:key="id">
+    <block wx:for="{{displayList}}" wx:key="id">
       <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
         <view style="flex:1;">
+          <view class="badge {{item.type === 'income' ? 'low' : 'high'}}">{{item.type === 'income' ? '收入' : '支出'}}</view>
           <view>{{item.note}}</view>
-          <view class="muted">¥{{item.amount}}</view>
+          <view class="muted">{{item.dateText}} {{item.category ? ('· ' + item.category) : ''}}</view>
+          <view class="muted">¥{{item.amountText}}</view>
         </view>
         <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
       </view>

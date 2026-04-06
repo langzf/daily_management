@@ -2,22 +2,47 @@
   <view class="card">
     <view class="section-title">新增日程</view>
     <input class="input" placeholder="事项名称" value="{{title}}" bindinput="onTitle" />
-    <input class="input" style="margin-top:12rpx;" placeholder="时间（例如 2026-04-07 09:00）" value="{{timeText}}" bindinput="onTime" />
+    <view class="row" style="margin-top:12rpx;">
+      <picker mode="date" value="{{dateText}}" bindchange="onDateChange" style="flex:1;">
+        <view class="input picker-like">{{dateText || '选择日期'}}</view>
+      </picker>
+      <picker mode="time" value="{{timeText}}" bindchange="onTimeChange" style="width: 220rpx;">
+        <view class="input picker-like">{{timeText || '选择时间'}}</view>
+      </picker>
+    </view>
+    <input class="input" style="margin-top:12rpx;" placeholder="标签（可选，如 工作/生活）" value="{{tag}}" bindinput="onTag" />
     <button class="button" bindtap="addSchedule">添加日程</button>
   </view>
 
   <view class="card">
-    <view class="section-title">日程列表</view>
-    <block wx:if="{{list.length === 0}}">
+    <view class="row">
+      <view class="section-title" style="margin-bottom:0;">日程列表</view>
+      <text class="muted">总{{summary.total}} / 今日{{summary.today}} / 逾期{{summary.overdue}}</text>
+    </view>
+    <view class="chip-group" style="margin: 10rpx 0 8rpx;">
+      <view class="chip {{filter === 'all' ? 'chip-active' : ''}}" data-value="all" bindtap="setFilter">全部</view>
+      <view class="chip {{filter === 'pending' ? 'chip-active' : ''}}" data-value="pending" bindtap="setFilter">待办</view>
+      <view class="chip {{filter === 'today' ? 'chip-active' : ''}}" data-value="today" bindtap="setFilter">今日</view>
+      <view class="chip {{filter === 'overdue' ? 'chip-active' : ''}}" data-value="overdue" bindtap="setFilter">逾期</view>
+      <view class="chip {{filter === 'done' ? 'chip-active' : ''}}" data-value="done" bindtap="setFilter">已完成</view>
+    </view>
+    <block wx:if="{{displayList.length === 0}}">
       <view class="muted">暂无日程。</view>
     </block>
-    <block wx:for="{{list}}" wx:key="id">
+    <block wx:for="{{displayList}}" wx:key="id">
       <view style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
         <view class="row">
           <view style="flex:1;">
-            <view>{{item.title}}</view>
-            <view class="muted">{{item.timeText}}</view>
+            <view class="row" style="justify-content:flex-start; align-items:center;">
+              <view class="status-dot {{item.status === 'done' ? 'status-done' : 'status-pending'}}"></view>
+              <view>{{item.title}}</view>
+            </view>
+            <view class="muted">{{item.dateText}} {{item.timeText}} {{item.tag ? ('· ' + item.tag) : ''}}</view>
+            <view class="badge {{item.status === 'overdue' ? 'high' : (item.status === 'today' ? 'medium' : 'low')}}">
+              {{item.status === 'overdue' ? '逾期' : (item.status === 'today' ? '今日' : (item.status === 'done' ? '已完成' : '待办'))}}
+            </view>
           </view>
+          <button size="mini" bindtap="toggleDone" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
           <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
         </view>
       </view>

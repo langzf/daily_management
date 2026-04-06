@@ -33,9 +33,25 @@ function isYesterday(targetDayKey, referenceDayKey) {
   return targetDayKey === shiftDayKey(ref, -1);
 }
 
+function formatMonthKey(input) {
+  const d = input ? new Date(input) : new Date();
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function parseDateTime(dateText, timeText) {
+  if (!dateText || !timeText) return NaN;
+  const d = new Date(`${dateText}T${timeText}:00`);
+  return d.getTime();
+}
+
 module.exports = {
   formatDate,
   formatDayKey,
   shiftDayKey,
-  isYesterday
+  isYesterday,
+  formatMonthKey,
+  parseDateTime
 };
