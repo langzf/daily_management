@@ -56,8 +56,15 @@ npm run backend:start
 - `make package`
 - `make backend-start`
 - `make backend-test`
+- `make backend-logs`
 
 These commands are designed to be called by the software-delivery-orchestrator pipeline.
+
+## Debug Logs
+
+- Access log: `backend/logs/access.log`
+- Error log: `backend/logs/error.log`
+- Quick tail: `npm run backend:logs`
 
 ## Sync Orchestrator Artifacts to This Repo
 

@@ -3,19 +3,24 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const crypto = require('crypto');
 const { URL } = require('url');
 const { DatabaseSync } = require('node:sqlite');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(ROOT_DIR, 'data');
+const LOG_DIR = path.join(ROOT_DIR, 'logs');
 const SCHEMA_PATH = path.join(ROOT_DIR, 'db', 'schema.sql');
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'daily_management.sqlite');
+const ACCESS_LOG_PATH = process.env.ACCESS_LOG_PATH || path.join(LOG_DIR, 'access.log');
+const ERROR_LOG_PATH = process.env.ERROR_LOG_PATH || path.join(LOG_DIR, 'error.log');
 const PORT = Number(process.env.PORT || 8787);
 const BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 
 const SNAPSHOT_KEYS = ['daily_todos', 'daily_habits', 'daily_schedule', 'daily_finance'];
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(LOG_DIR, { recursive: true });
 
 const db = new DatabaseSync(DB_PATH);
 const schemaSQL = fs.readFileSync(SCHEMA_PATH, 'utf8');
@@ -59,6 +64,41 @@ class HttpError extends Error {
     super(message);
     this.statusCode = statusCode;
   }
+}
+
+function createRequestId() {
+  return crypto.randomUUID();
+}
+
+function appendLog(filePath, event) {
+  try {
+    fs.appendFileSync(filePath, `${JSON.stringify(event)}\n`, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown log write error';
+    console.error(`[log-write-failed] ${filePath} ${message}`);
+  }
+}
+
+function logAccess(event) {
+  const line = {
+    ts: new Date().toISOString(),
+    level: 'info',
+    event: 'access',
+    ...event
+  };
+  console.log(`[access] ${JSON.stringify(line)}`);
+  appendLog(ACCESS_LOG_PATH, line);
+}
+
+function logError(event) {
+  const line = {
+    ts: new Date().toISOString(),
+    level: 'error',
+    event: 'request_error',
+    ...event
+  };
+  console.error(`[error] ${JSON.stringify(line)}`);
+  appendLog(ERROR_LOG_PATH, line);
 }
 
 function isObject(value) {
@@ -352,6 +392,7 @@ async function handleRequest(req, res) {
   }
 
   if (method === 'GET' && url.pathname === '/health') {
+    req.logRoute = 'health';
     sendJson(res, 200, {
       ok: true,
       service: 'daily-management-backend',
@@ -363,6 +404,8 @@ async function handleRequest(req, res) {
 
   if (url.pathname === '/api/v1/snapshot' && method === 'GET') {
     const userId = normalizeUserId(url.searchParams.get('userId'));
+    req.logRoute = 'snapshot:get';
+    req.logUserId = userId;
     sendJson(res, 200, {
       ok: true,
       userId,
@@ -379,16 +422,19 @@ async function handleRequest(req, res) {
     }
     const userId = normalizeUserId(body.userId);
     const snapshot = normalizeSnapshotData(body.data);
+    req.logRoute = 'snapshot:put';
+    req.logUserId = userId;
+    req.logSnapshotCounts = {
+      daily_todos: snapshot.daily_todos.length,
+      daily_habits: snapshot.daily_habits.length,
+      daily_schedule: snapshot.daily_schedule.length,
+      daily_finance: snapshot.daily_finance.length
+    };
     saveSnapshot(userId, snapshot);
     sendJson(res, 200, {
       ok: true,
       userId,
-      counts: {
-        daily_todos: snapshot.daily_todos.length,
-        daily_habits: snapshot.daily_habits.length,
-        daily_schedule: snapshot.daily_schedule.length,
-        daily_finance: snapshot.daily_finance.length
-      },
+      counts: req.logSnapshotCounts,
       savedAt: new Date().toISOString()
     });
     return;
@@ -398,9 +444,50 @@ async function handleRequest(req, res) {
 }
 
 const server = http.createServer((req, res) => {
+  const startedAt = process.hrtime.bigint();
+  const requestId = String(req.headers['x-request-id'] || createRequestId());
+  const rawPath = new URL(req.url || '/', 'http://localhost').pathname;
+
+  req.requestId = requestId;
+  res.setHeader('x-request-id', requestId);
+
+  let finalized = false;
+  function finalizeLog(kind) {
+    if (finalized) return;
+    finalized = true;
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    logAccess({
+      requestId,
+      route: req.logRoute || 'unknown',
+      method: req.method || 'GET',
+      path: rawPath,
+      statusCode: res.statusCode,
+      durationMs: Number(durationMs.toFixed(2)),
+      userId: req.logUserId || '',
+      snapshotCounts: req.logSnapshotCounts || null,
+      kind
+    });
+  }
+
+  res.on('finish', () => finalizeLog('finish'));
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      finalizeLog('close');
+    }
+  });
+
   handleRequest(req, res).catch((err) => {
     const statusCode = err instanceof HttpError ? err.statusCode : 500;
     const message = err instanceof Error ? err.message : 'unexpected server error';
+    logError({
+      requestId,
+      route: req.logRoute || 'unknown',
+      method: req.method || 'GET',
+      path: rawPath,
+      statusCode,
+      userId: req.logUserId || '',
+      error: message
+    });
     sendJson(res, statusCode, {
       ok: false,
       error: message
@@ -411,6 +498,8 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`backend-ready: http://127.0.0.1:${PORT}`);
   console.log(`backend-db: ${DB_PATH}`);
+  console.log(`backend-access-log: ${ACCESS_LOG_PATH}`);
+  console.log(`backend-error-log: ${ERROR_LOG_PATH}`);
 });
 
 process.on('SIGINT', () => {

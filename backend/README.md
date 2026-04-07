@@ -34,3 +34,16 @@ PUT payload example:
 - Engine: SQLite
 - DB path (default): `backend/data/daily_management.sqlite`
 - Schema file: `backend/db/schema.sql`
+
+## Logs
+
+- Access log: `backend/logs/access.log`
+- Error log: `backend/logs/error.log`
+- Every response carries `x-request-id`; the same ID appears in logs.
+
+Tail access log:
+
+```bash
+cd /Users/langzhifa/workspaces/daily_management
+npm run backend:logs
+```

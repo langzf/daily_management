@@ -15,6 +15,7 @@
     "deploy": "node scripts/deploy.js",
     "rollback": "node scripts/rollback.js",
     "backend:start": "node backend/src/server.js",
-    "backend:test": "node backend/tests/snapshot_api.test.js"
+    "backend:test": "node backend/tests/snapshot_api.test.js",
+    "backend:logs": "mkdir -p backend/logs && touch backend/logs/access.log && tail -f backend/logs/access.log"
   }
 }

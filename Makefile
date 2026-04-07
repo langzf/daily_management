@@ -33,3 +33,6 @@ backend-start:
 
 backend-test:
 	npm run backend:test
+
+backend-logs:
+	npm run backend:logs
