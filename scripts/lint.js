@@ -9,6 +9,7 @@ const required = [
   'pages/finance/index.js',
   'pages/data/index.js',
   'pages/data/index.wxml',
+  'utils/sync.js',
   'backend/src/server.js',
   'backend/db/schema.sql',
   'backend/tests/snapshot_api.test.js'

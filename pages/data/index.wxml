@@ -27,8 +27,8 @@
   </view>
 
   <view class="card">
-    <view class="section-title">后端同步（可选）</view>
-    <view class="muted" style="margin-bottom: 12rpx;">用于多端共享与长期存档；本地功能不依赖后端。</view>
+    <view class="section-title">后端自动同步</view>
+    <view class="muted" style="margin-bottom: 12rpx;">发布后默认建议启用自动同步，无需手动上传。</view>
 
     <view class="field-label">API 地址</view>
     <input class="input" value="{{apiBaseUrl}}" placeholder="例如 http://127.0.0.1:8787" bindinput="onApiBaseUrlInput" />
@@ -36,12 +36,26 @@
     <view class="field-label" style="margin-top: 12rpx;">用户 ID</view>
     <input class="input" value="{{apiUserId}}" placeholder="例如 demo_user" bindinput="onApiUserIdInput" />
 
-    <view class="row sync-actions">
-      <button size="mini" bindtap="saveSyncConfig">保存配置</button>
-      <button size="mini" bindtap="uploadToServer">上传到后端</button>
-      <button size="mini" bindtap="downloadFromServer">从后端下载</button>
+    <view class="row switch-row">
+      <text>启用自动同步</text>
+      <switch checked="{{autoSyncEnabled}}" bindchange="onAutoSyncChange" color="#1677ff" />
     </view>
 
+    <view class="row switch-row">
+      <text>调试模式（显示手动按钮）</text>
+      <switch checked="{{debugSyncMode}}" bindchange="onDebugSyncModeChange" color="#1677ff" />
+    </view>
+
+    <view class="row sync-actions">
+      <button size="mini" bindtap="saveSyncConfig">保存同步配置</button>
+    </view>
+
+    <view class="row sync-actions" wx:if="{{debugSyncMode}}">
+      <button size="mini" bindtap="debugUploadNow">立即上传（调试）</button>
+      <button size="mini" bindtap="debugDownloadNow">从后端恢复（调试）</button>
+    </view>
+
+    <view class="muted sync-status" wx:if="{{lastSyncAt}}">最近成功：{{lastSyncAt}}</view>
     <view class="muted sync-status" wx:if="{{syncStatus}}">状态：{{syncStatus}}</view>
   </view>
 

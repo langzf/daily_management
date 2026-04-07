@@ -17,6 +17,10 @@
   margin-bottom: 8rpx;
 }
 
+.switch-row {
+  margin-top: 14rpx;
+}
+
 .sync-actions {
   justify-content: flex-start;
   gap: 12rpx;

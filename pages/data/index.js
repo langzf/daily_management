@@ -1,4 +1,19 @@
 const { getList, setList } = require('../../utils/storage');
+const {
+  DEFAULT_SYNC_BASE_URL,
+  DEFAULT_SYNC_USER_ID,
+  getSyncConfig,
+  saveSyncConfig: persistSyncConfig,
+  getSyncMeta,
+  normalizeBaseUrl,
+  isValidBaseUrl,
+  isValidUserId,
+  uploadSnapshot,
+  downloadSnapshot,
+  applySnapshotData,
+  tryInitialPull,
+  flushUpload
+} = require('../../utils/sync');
 
 const DATA_KEYS = [
   { key: 'daily_todos', label: '待办' },
@@ -7,11 +22,6 @@ const DATA_KEYS = [
   { key: 'daily_finance', label: '记账' }
 ];
 
-const SYNC_BASE_URL_KEY = 'daily_sync_base_url';
-const SYNC_USER_ID_KEY = 'daily_sync_user_id';
-const DEFAULT_SYNC_BASE_URL = 'http://127.0.0.1:8787';
-const DEFAULT_SYNC_USER_ID = 'demo_user';
-
 function buildStats() {
   return DATA_KEYS.map((item) => ({
     ...item,
@@ -19,11 +29,15 @@ function buildStats() {
   }));
 }
 
-function buildSnapshotData() {
-  return DATA_KEYS.reduce((acc, item) => {
-    acc[item.key] = getList(item.key);
-    return acc;
-  }, {});
+function buildExportPayload() {
+  return {
+    version: '1.0.0',
+    exportedAt: new Date().toISOString(),
+    data: DATA_KEYS.reduce((acc, item) => {
+      acc[item.key] = getList(item.key);
+      return acc;
+    }, {})
+  };
 }
 
 function normalizePayload(payload) {
@@ -43,38 +57,6 @@ function normalizePayload(payload) {
   return normalized;
 }
 
-function normalizeBaseUrl(raw) {
-  const value = String(raw || '').trim();
-  if (!value) return '';
-  return value.replace(/\/+$/, '');
-}
-
-function isValidUserId(userId) {
-  return /^[A-Za-z0-9_-]{1,64}$/.test(userId);
-}
-
-function requestJSON({ url, method, data }) {
-  return new Promise((resolve, reject) => {
-    wx.request({
-      url,
-      method,
-      data,
-      timeout: 8000,
-      success: (resp) => {
-        const body = resp.data || {};
-        if (resp.statusCode >= 200 && resp.statusCode < 300) {
-          resolve(body);
-          return;
-        }
-        reject(new Error(body.error || `请求失败: ${resp.statusCode}`));
-      },
-      fail: (err) => {
-        reject(new Error((err && err.errMsg) || '网络请求失败'));
-      }
-    });
-  });
-}
-
 Page({
   data: {
     stats: [],
@@ -83,20 +65,30 @@ Page({
     lastExportAt: '',
     apiBaseUrl: DEFAULT_SYNC_BASE_URL,
     apiUserId: DEFAULT_SYNC_USER_ID,
-    syncStatus: ''
+    autoSyncEnabled: true,
+    debugSyncMode: false,
+    syncStatus: '',
+    lastSyncAt: ''
   },
 
   onShow() {
     this.loadSyncConfig();
     this.refreshStats();
+    this.refreshSyncMeta();
+
+    tryInitialPull().then(() => {
+      this.refreshStats();
+      this.refreshSyncMeta();
+    });
   },
 
   loadSyncConfig() {
-    const baseUrl = normalizeBaseUrl(wx.getStorageSync(SYNC_BASE_URL_KEY) || DEFAULT_SYNC_BASE_URL);
-    const userId = String(wx.getStorageSync(SYNC_USER_ID_KEY) || DEFAULT_SYNC_USER_ID).trim();
+    const config = getSyncConfig();
     this.setData({
-      apiBaseUrl: baseUrl || DEFAULT_SYNC_BASE_URL,
-      apiUserId: userId || DEFAULT_SYNC_USER_ID
+      apiBaseUrl: config.baseUrl || DEFAULT_SYNC_BASE_URL,
+      apiUserId: config.userId || DEFAULT_SYNC_USER_ID,
+      autoSyncEnabled: !!config.autoSyncEnabled,
+      debugSyncMode: !!config.debugMode
     });
   },
 
@@ -104,12 +96,16 @@ Page({
     this.setData({ stats: buildStats() });
   },
 
+  refreshSyncMeta() {
+    const meta = getSyncMeta();
+    this.setData({
+      syncStatus: meta.lastStatus || '',
+      lastSyncAt: meta.lastSuccessAt || ''
+    });
+  },
+
   generateExport() {
-    const payload = {
-      version: '1.0.0',
-      exportedAt: new Date().toISOString(),
-      data: buildSnapshotData()
-    };
+    const payload = buildExportPayload();
 
     this.setData({
       exportText: JSON.stringify(payload, null, 2),
@@ -146,11 +142,21 @@ Page({
     this.setData({ apiUserId: e.detail.value || '' });
   },
 
+  onAutoSyncChange(e) {
+    this.setData({ autoSyncEnabled: !!e.detail.value });
+  },
+
+  onDebugSyncModeChange(e) {
+    this.setData({ debugSyncMode: !!e.detail.value });
+  },
+
   saveSyncConfig() {
     const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
     const apiUserId = String(this.data.apiUserId || '').trim();
+    const autoSyncEnabled = !!this.data.autoSyncEnabled;
+    const debugSyncMode = !!this.data.debugSyncMode;
 
-    if (!/^https?:\/\//.test(apiBaseUrl)) {
+    if (!isValidBaseUrl(apiBaseUrl)) {
       wx.showToast({ title: 'API地址需以 http/https 开头', icon: 'none' });
       return;
     }
@@ -159,101 +165,72 @@ Page({
       return;
     }
 
-    wx.setStorageSync(SYNC_BASE_URL_KEY, apiBaseUrl);
-    wx.setStorageSync(SYNC_USER_ID_KEY, apiUserId);
-    this.setData({
-      apiBaseUrl,
-      apiUserId,
-      syncStatus: '同步配置已保存'
+    const saved = persistSyncConfig({
+      baseUrl: apiBaseUrl,
+      userId: apiUserId,
+      autoSyncEnabled,
+      debugMode: debugSyncMode
     });
 
-    wx.showToast({ title: '配置已保存', icon: 'success' });
+    this.setData({
+      apiBaseUrl: saved.baseUrl,
+      apiUserId: saved.userId,
+      autoSyncEnabled: saved.autoSyncEnabled,
+      debugSyncMode: saved.debugMode
+    });
+
+    wx.showToast({ title: '同步配置已保存', icon: 'success' });
+
+    if (saved.autoSyncEnabled) {
+      flushUpload('config-save').then(() => {
+        this.refreshSyncMeta();
+      });
+    } else {
+      this.refreshSyncMeta();
+    }
   },
 
-  uploadToServer() {
-    const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
-    const apiUserId = String(this.data.apiUserId || '').trim();
-
-    if (!/^https?:\/\//.test(apiBaseUrl)) {
-      wx.showToast({ title: '请先填写有效API地址', icon: 'none' });
-      return;
-    }
-    if (!isValidUserId(apiUserId)) {
-      wx.showToast({ title: '请先填写有效userId', icon: 'none' });
-      return;
-    }
-
-    const payload = {
-      userId: apiUserId,
-      data: buildSnapshotData()
-    };
-
-    wx.showLoading({ title: '上传中', mask: true });
-    requestJSON({
-      url: `${apiBaseUrl}/api/v1/snapshot`,
-      method: 'PUT',
-      data: payload
-    })
-      .then((resp) => {
-        if (!resp || resp.ok !== true) {
-          throw new Error((resp && resp.error) || '后端返回异常');
-        }
-        const time = resp.savedAt || new Date().toISOString();
-        this.setData({ syncStatus: `上传成功：${time}` });
-        wx.showToast({ title: '上传成功', icon: 'success' });
+  debugUploadNow() {
+    wx.showLoading({ title: '同步中', mask: true });
+    uploadSnapshot({ reason: 'debug-manual', ignoreAutoGate: true })
+      .then(() => {
+        this.refreshSyncMeta();
+        wx.showToast({ title: '同步完成', icon: 'success' });
       })
       .catch((err) => {
-        const message = (err && err.message) || '上传失败';
-        this.setData({ syncStatus: `上传失败：${message}` });
-        wx.showToast({ title: message, icon: 'none' });
+        wx.showToast({ title: (err && err.message) || '同步失败', icon: 'none' });
       })
       .finally(() => {
         wx.hideLoading();
       });
   },
 
-  downloadFromServer() {
+  debugDownloadNow() {
     const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
     const apiUserId = String(this.data.apiUserId || '').trim();
 
-    if (!/^https?:\/\//.test(apiBaseUrl)) {
-      wx.showToast({ title: '请先填写有效API地址', icon: 'none' });
-      return;
-    }
-    if (!isValidUserId(apiUserId)) {
-      wx.showToast({ title: '请先填写有效userId', icon: 'none' });
+    if (!isValidBaseUrl(apiBaseUrl) || !isValidUserId(apiUserId)) {
+      wx.showToast({ title: '请先保存有效同步配置', icon: 'none' });
       return;
     }
 
     wx.showLoading({ title: '下载中', mask: true });
-    requestJSON({
-      url: `${apiBaseUrl}/api/v1/snapshot?userId=${encodeURIComponent(apiUserId)}`,
-      method: 'GET'
-    })
+    downloadSnapshot({ baseUrl: apiBaseUrl, userId: apiUserId })
       .then((resp) => {
-        if (!resp || resp.ok !== true) {
-          throw new Error((resp && resp.error) || '后端返回异常');
-        }
-        const normalized = normalizePayload({ data: resp.data || {} });
         wx.showModal({
           title: '确认覆盖',
           content: '下载数据会覆盖当前本地四个模块数据，是否继续？',
           success: (modalRes) => {
             if (!modalRes.confirm) return;
-            for (const item of DATA_KEYS) {
-              setList(item.key, normalized[item.key]);
-            }
+            applySnapshotData(resp.data || {});
             this.refreshStats();
-            const time = resp.fetchedAt || new Date().toISOString();
-            this.setData({ syncStatus: `下载成功：${time}`, importText: '', exportText: '' });
-            wx.showToast({ title: '下载成功', icon: 'success' });
+            this.refreshSyncMeta();
+            wx.showToast({ title: '恢复完成', icon: 'success' });
           }
         });
       })
       .catch((err) => {
-        const message = (err && err.message) || '下载失败';
-        this.setData({ syncStatus: `下载失败：${message}` });
-        wx.showToast({ title: message, icon: 'none' });
+        wx.showToast({ title: (err && err.message) || '下载失败', icon: 'none' });
       })
       .finally(() => {
         wx.hideLoading();
@@ -293,6 +270,7 @@ Page({
         }
         this.setData({ importText: '' });
         this.refreshStats();
+        this.refreshSyncMeta();
         wx.showToast({ title: '导入成功', icon: 'success' });
       }
     });
@@ -309,6 +287,7 @@ Page({
         }
         this.setData({ exportText: '', importText: '', lastExportAt: '' });
         this.refreshStats();
+        this.refreshSyncMeta();
         wx.showToast({ title: '已清空', icon: 'success' });
       }
     });

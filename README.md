@@ -8,7 +8,7 @@ A personal daily management WeChat Mini Program with four core modules:
 - Expense Ledger
 - Data Backup/Restore
 - Local Reminder Notifications
-- Backend Sync (optional)
+- Backend Auto Sync (optional)
 
 ## Project Directory (Single Source of Truth)
 
@@ -24,7 +24,7 @@ Orchestrator artifacts are synced into:
 
 1. Open `/Users/langzhifa/workspaces/daily_management` in WeChat DevTools.
 2. Confirm AppID in `project.config.json` is `wx906c18e761d86790`.
-3. To use backend sync, start backend service first.
+3. Start backend service for sync features.
 
 ## Start Backend Service (SQLite)
 
@@ -37,10 +37,12 @@ npm run backend:start
 - Database: `backend/data/daily_management.sqlite`
 - Schema: `backend/db/schema.sql`
 
-Then in mini program Data page:
+## Auto Sync Behavior
 
-1. Fill API URL and userId.
-2. Click `上传到后端` or `从后端下载`.
+- App launch: if local data is empty, try pulling snapshot from backend.
+- Local data change: auto upload with debounce.
+- App hide: force flush pending upload once.
+- Data page keeps a debug mode for manual upload/download buttons.
 
 ## Automation Commands
 
