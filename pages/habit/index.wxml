@@ -1,32 +1,70 @@
 <view class="container">
-  <view class="row" style="justify-content:flex-end; margin-bottom:10rpx;">
-    <navigator class="chip" url="/pages/data/index">数据管理</navigator>
+  <view class="hero">
+    <view class="hero-head">
+      <view>
+        <view class="hero-main">
+          <view class="hero-icon">
+            <image src="/assets/ant-icons/fire-outlined.svg" mode="aspectFit" />
+          </view>
+          <view class="hero-title">习惯打卡</view>
+        </view>
+        <view class="hero-subtitle">连续性比强度更重要，先稳住每日节奏。</view>
+      </view>
+      <navigator class="hero-action" url="/pages/data/index">数据中心</navigator>
+    </view>
+    <view class="kpi-row">
+      <view class="kpi-item">
+        <view class="kpi-label">习惯总数</view>
+        <view class="kpi-value">{{summary.total}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">今日完成</view>
+        <view class="kpi-value">{{summary.doneToday}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">待打卡</view>
+        <view class="kpi-value">{{summary.total - summary.doneToday}}</view>
+      </view>
+    </view>
   </view>
+
   <view class="card">
-    <view class="section-title">新增习惯</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/plus-outlined.svg" mode="aspectFit" />
+        <view class="section-title">新增习惯</view>
+      </view>
+    </view>
     <input class="input" placeholder="例如：晨跑20分钟" value="{{newName}}" bindinput="onInput" />
     <button class="button" bindtap="addHabit">添加习惯</button>
   </view>
 
   <view class="card">
-    <view class="row">
-      <view class="section-title" style="margin-bottom:0;">今日打卡</view>
-      <text class="muted">已完成 {{summary.doneToday}} / {{summary.total}}</text>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/trophy-outlined.svg" mode="aspectFit" />
+        <view class="section-title">今日打卡</view>
+      </view>
+      <view class="muted">已完成 {{summary.doneToday}} / {{summary.total}}</view>
     </view>
+
     <block wx:if="{{list.length === 0}}">
       <view class="muted">暂无习惯，先添加一个打卡目标。</view>
     </block>
+
     <block wx:for="{{list}}" wx:key="id">
-      <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
-        <view style="flex:1;">
+      <view class="list-row row">
+        <view class="list-main">
           <view class="row" style="justify-content:flex-start; align-items:center;">
             <view class="status-dot {{item.checkedToday ? 'status-done' : 'status-pending'}}"></view>
             <view>{{item.name}}</view>
           </view>
           <view class="muted">连续 {{item.streak}} 天 · 最近打卡 {{item.lastCheckDate || '暂无'}}</view>
         </view>
-        <button size="mini" bindtap="checkIn" data-id="{{item.id}}">{{item.checkedToday ? '已打卡' : '打卡'}}</button>
-        <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        <view class="row-actions">
+          <button size="mini" class="small-button" bindtap="checkIn" data-id="{{item.id}}">{{item.checkedToday ? '已打卡' : '打卡'}}</button>
+          <button size="mini" class="small-button warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        </view>
       </view>
     </block>
   </view>

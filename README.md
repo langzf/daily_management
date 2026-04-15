@@ -9,6 +9,7 @@ A personal daily management WeChat Mini Program with four core modules:
 - Data Backup/Restore
 - Local Reminder Notifications
 - Backend Auto Sync (optional)
+- Refreshed UI with Alibaba open-source Ant Design icons
 
 ## Project Directory (Single Source of Truth)
 
@@ -65,6 +66,14 @@ These commands are designed to be called by the software-delivery-orchestrator p
 - Access log: `backend/logs/access.log`
 - Error log: `backend/logs/error.log`
 - Quick tail: `npm run backend:logs`
+
+## UI Icon Source
+
+- Icon system: Ant Design Icons (Alibaba open-source)
+- npm latest checked on 2026-04-15:
+  - `@ant-design/icons` `6.1.1`
+  - `@ant-design/icons-svg` `4.4.2`
+- Local assets path: `assets/ant-icons/`
 
 ## Sync Orchestrator Artifacts to This Repo
 

@@ -1,8 +1,28 @@
 <view class="container">
+  <view class="hero">
+    <view class="hero-head">
+      <view>
+        <view class="hero-main">
+          <view class="hero-icon">
+            <image src="/assets/ant-icons/database-outlined.svg" mode="aspectFit" />
+          </view>
+          <view class="hero-title">数据中心</view>
+        </view>
+        <view class="hero-subtitle">备份、恢复与自动同步设置都在这里。</view>
+      </view>
+      <view class="hero-action">v1</view>
+    </view>
+  </view>
+
   <view class="card">
-    <view class="section-title">数据概览</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/profile-outlined.svg" mode="aspectFit" />
+        <view class="section-title">数据概览</view>
+      </view>
+    </view>
     <block wx:for="{{stats}}" wx:key="key">
-      <view class="row" style="padding: 10rpx 0; border-bottom: 1rpx solid #f0f2f5;">
+      <view class="list-row row">
         <text>{{item.label}}</text>
         <text class="muted">{{item.count}} 条</text>
       </view>
@@ -10,25 +30,40 @@
   </view>
 
   <view class="card">
-    <view class="section-title">导出备份</view>
-    <view class="muted" wx:if="{{lastExportAt}}" style="margin-bottom: 10rpx;">最近导出：{{lastExportAt}}</view>
-    <view class="row" style="justify-content: flex-start; gap: 12rpx; margin-bottom: 12rpx; flex-wrap: wrap;">
-      <button size="mini" bindtap="generateExport">生成导出内容</button>
-      <button size="mini" bindtap="copyExport">复制到剪贴板</button>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/cloud-upload-outlined.svg" mode="aspectFit" />
+        <view class="section-title">导出备份</view>
+      </view>
+      <view class="muted" wx:if="{{lastExportAt}}">{{lastExportAt}}</view>
     </view>
-    <textarea class="textarea" value="{{exportText}}" placeholder="点击“生成导出内容”" maxlength="-1" disabled="{{true}}"></textarea>
+    <view class="row" style="justify-content: flex-start; gap: 12rpx; margin-bottom: 12rpx; flex-wrap: wrap;">
+      <button size="mini" class="small-button" bindtap="generateExport">生成导出</button>
+      <button size="mini" class="small-button" bindtap="copyExport">复制内容</button>
+    </view>
+    <textarea class="textarea" value="{{exportText}}" placeholder="点击“生成导出”" maxlength="-1" disabled="{{true}}"></textarea>
   </view>
 
   <view class="card">
-    <view class="section-title">导入恢复</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/cloud-download-outlined.svg" mode="aspectFit" />
+        <view class="section-title">导入恢复</view>
+      </view>
+    </view>
     <view class="muted" style="margin-bottom: 10rpx;">请粘贴完整导出 JSON，导入会覆盖现有四个模块数据。</view>
     <textarea class="textarea" value="{{importText}}" placeholder="在此粘贴导出 JSON" maxlength="-1" bindinput="onImportInput"></textarea>
-    <button class="button" bindtap="importData">执行导入</button>
+    <button class="button secondary" bindtap="importData">执行导入</button>
   </view>
 
   <view class="card">
-    <view class="section-title">后端自动同步</view>
-    <view class="muted" style="margin-bottom: 12rpx;">发布后默认建议启用自动同步，无需手动上传。</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/sync-outlined.svg" mode="aspectFit" />
+        <view class="section-title">后端自动同步</view>
+      </view>
+    </view>
+    <view class="muted" style="margin-bottom: 12rpx;">默认启用自动同步，无需手动上传。</view>
 
     <view class="field-label">API 地址</view>
     <input class="input" value="{{apiBaseUrl}}" placeholder="例如 http://127.0.0.1:8787" bindinput="onApiBaseUrlInput" />
@@ -38,21 +73,21 @@
 
     <view class="row switch-row">
       <text>启用自动同步</text>
-      <switch checked="{{autoSyncEnabled}}" bindchange="onAutoSyncChange" color="#1677ff" />
+      <switch checked="{{autoSyncEnabled}}" bindchange="onAutoSyncChange" color="#175dff" />
     </view>
 
     <view class="row switch-row">
       <text>调试模式（显示手动按钮）</text>
-      <switch checked="{{debugSyncMode}}" bindchange="onDebugSyncModeChange" color="#1677ff" />
+      <switch checked="{{debugSyncMode}}" bindchange="onDebugSyncModeChange" color="#175dff" />
     </view>
 
     <view class="row sync-actions">
-      <button size="mini" bindtap="saveSyncConfig">保存同步配置</button>
+      <button size="mini" class="small-button" bindtap="saveSyncConfig">保存同步配置</button>
     </view>
 
     <view class="row sync-actions" wx:if="{{debugSyncMode}}">
-      <button size="mini" bindtap="debugUploadNow">立即上传（调试）</button>
-      <button size="mini" bindtap="debugDownloadNow">从后端恢复（调试）</button>
+      <button size="mini" class="small-button" bindtap="debugUploadNow">立即上传</button>
+      <button size="mini" class="small-button" bindtap="debugDownloadNow">从后端恢复</button>
     </view>
 
     <view class="muted sync-status" wx:if="{{lastSyncAt}}">最近成功：{{lastSyncAt}}</view>
@@ -60,7 +95,12 @@
   </view>
 
   <view class="card">
-    <view class="section-title">危险操作</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/delete-outlined.svg" mode="aspectFit" />
+        <view class="section-title">危险操作</view>
+      </view>
+    </view>
     <view class="muted" style="margin-bottom: 12rpx;">清空前建议先导出备份。</view>
     <button class="button danger" bindtap="clearAll">清空全部数据</button>
   </view>

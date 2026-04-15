@@ -1,9 +1,40 @@
 <view class="container">
-  <view class="row" style="justify-content:flex-end; margin-bottom:10rpx;">
-    <navigator class="chip" url="/pages/data/index">数据管理</navigator>
+  <view class="hero">
+    <view class="hero-head">
+      <view>
+        <view class="hero-main">
+          <view class="hero-icon">
+            <image src="/assets/ant-icons/check-square-outlined.svg" mode="aspectFit" />
+          </view>
+          <view class="hero-title">待办清单</view>
+        </view>
+        <view class="hero-subtitle">今天的关键任务，先做最重要的三件事。</view>
+      </view>
+      <navigator class="hero-action" url="/pages/data/index">数据中心</navigator>
+    </view>
+    <view class="kpi-row">
+      <view class="kpi-item">
+        <view class="kpi-label">总数</view>
+        <view class="kpi-value">{{stats.total}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">未完成</view>
+        <view class="kpi-value">{{stats.active}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">已完成</view>
+        <view class="kpi-value">{{stats.done}}</view>
+      </view>
+    </view>
   </view>
+
   <view class="card">
-    <view class="section-title">新增待办</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/plus-outlined.svg" mode="aspectFit" />
+        <view class="section-title">新增待办</view>
+      </view>
+    </view>
     <input class="input" placeholder="输入待办内容" value="{{newText}}" bindinput="onInput" />
     <view class="priority-row">
       <text class="muted">优先级：</text>
@@ -13,31 +44,39 @@
         <view class="chip {{newPriority === 'high' ? 'chip-active' : ''}}" data-value="high" bindtap="onPriorityChange">高</view>
       </view>
     </view>
-    <button class="button" bindtap="addTodo">添加</button>
+    <button class="button" bindtap="addTodo">添加待办</button>
   </view>
 
   <view class="card">
-    <view class="row">
-      <view class="section-title" style="margin-bottom: 0;">待办列表</view>
-      <text class="muted">总{{stats.total}} / 未完成{{stats.active}}</text>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/profile-outlined.svg" mode="aspectFit" />
+        <view class="section-title">任务列表</view>
+      </view>
+      <view class="muted">共 {{displayList.length}} 项</view>
     </view>
-    <view class="chip-group" style="margin: 10rpx 0 8rpx;">
+
+    <view class="chip-group" style="margin-bottom: 10rpx;">
       <view class="chip {{filter === 'all' ? 'chip-active' : ''}}" data-value="all" bindtap="setFilter">全部</view>
       <view class="chip {{filter === 'active' ? 'chip-active' : ''}}" data-value="active" bindtap="setFilter">未完成</view>
       <view class="chip {{filter === 'done' ? 'chip-active' : ''}}" data-value="done" bindtap="setFilter">已完成</view>
       <view class="chip" wx:if="{{stats.done > 0}}" bindtap="clearCompleted">清空已完成</view>
     </view>
+
     <block wx:if="{{displayList.length === 0}}">
       <view class="muted">暂无待办，开始安排今天的任务吧。</view>
     </block>
+
     <block wx:for="{{displayList}}" wx:key="id">
-      <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
-        <view style="flex:1;">
+      <view class="list-row row">
+        <view class="list-main">
           <view class="badge {{item.priority}}">{{item.priority === 'high' ? '高优先级' : (item.priority === 'medium' ? '中优先级' : '低优先级')}}</view>
-          <text style="text-decoration: {{item.done ? 'line-through' : 'none'}};">{{item.text}}</text>
+          <view style="text-decoration: {{item.done ? 'line-through' : 'none'}};">{{item.text}}</view>
         </view>
-        <button size="mini" bindtap="toggle" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
-        <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        <view class="row-actions">
+          <button size="mini" class="small-button" bindtap="toggle" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
+          <button size="mini" class="small-button warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        </view>
       </view>
     </block>
   </view>

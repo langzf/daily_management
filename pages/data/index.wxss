@@ -3,8 +3,8 @@
 .textarea {
   width: 100%;
   min-height: 220rpx;
-  border: 1rpx solid #d9e1ec;
-  border-radius: 12rpx;
+  border: 1rpx solid var(--c-border);
+  border-radius: 14rpx;
   padding: 16rpx;
   box-sizing: border-box;
   background: #fff;
@@ -30,8 +30,4 @@
 
 .sync-status {
   margin-top: 12rpx;
-}
-
-.danger {
-  background: #dc2626;
 }

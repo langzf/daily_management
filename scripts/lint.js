@@ -9,6 +9,7 @@ const required = [
   'pages/finance/index.js',
   'pages/data/index.js',
   'pages/data/index.wxml',
+  'assets/ant-icons/check-square-outlined.svg',
   'utils/sync.js',
   'backend/src/server.js',
   'backend/db/schema.sql',

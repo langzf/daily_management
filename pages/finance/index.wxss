@@ -1,5 +1,5 @@
 @import "../../app.wxss";
 
 .picker-like {
-  line-height: 72rpx;
+  line-height: 76rpx;
 }

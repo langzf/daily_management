@@ -1,9 +1,41 @@
 <view class="container">
-  <view class="row" style="justify-content:flex-end; margin-bottom:10rpx;">
-    <navigator class="chip" url="/pages/data/index">数据管理</navigator>
+  <view class="hero">
+    <view class="hero-head">
+      <view>
+        <view class="hero-main">
+          <view class="hero-icon">
+            <image src="/assets/ant-icons/calendar-outlined.svg" mode="aspectFit" />
+          </view>
+          <view class="hero-title">日程提醒</view>
+        </view>
+        <view class="hero-subtitle">安排时间块，减少临时任务打断。</view>
+      </view>
+      <navigator class="hero-action" url="/pages/data/index">数据中心</navigator>
+    </view>
+    <view class="kpi-row">
+      <view class="kpi-item">
+        <view class="kpi-label">总日程</view>
+        <view class="kpi-value">{{summary.total}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">今日</view>
+        <view class="kpi-value">{{summary.today}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">待提醒</view>
+        <view class="kpi-value">{{summary.dueReminder}}</view>
+      </view>
+    </view>
   </view>
+
   <view class="card">
-    <view class="section-title">新增日程</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/plus-outlined.svg" mode="aspectFit" />
+        <view class="section-title">新增日程</view>
+      </view>
+    </view>
+
     <input class="input" placeholder="事项名称" value="{{title}}" bindinput="onTitle" />
     <view class="row" style="margin-top:12rpx;">
       <picker mode="date" value="{{dateText}}" bindchange="onDateChange" style="flex:1;">
@@ -14,10 +46,13 @@
       </picker>
     </view>
     <input class="input" style="margin-top:12rpx;" placeholder="标签（可选，如 工作/生活）" value="{{tag}}" bindinput="onTag" />
-    <view class="row" style="justify-content:flex-start; margin-top:12rpx;">
+
+    <view class="row" style="justify-content:flex-start; margin-top:12rpx; gap: 10rpx;">
+      <image class="section-icon" src="/assets/ant-icons/bell-outlined.svg" mode="aspectFit" />
       <text class="muted">开启提醒</text>
-      <switch checked="{{createRemindEnabled}}" bindchange="onCreateRemindSwitch"></switch>
+      <switch checked="{{createRemindEnabled}}" bindchange="onCreateRemindSwitch" color="#175dff"></switch>
     </view>
+
     <view wx:if="{{createRemindEnabled}}" class="chip-group" style="margin-top:10rpx;">
       <view class="chip {{createRemindBeforeMin === 0 ? 'chip-active' : ''}}" data-min="0" bindtap="onCreateRemindMinutes">准点</view>
       <view class="chip {{createRemindBeforeMin === 5 ? 'chip-active' : ''}}" data-min="5" bindtap="onCreateRemindMinutes">提前5分</view>
@@ -25,28 +60,35 @@
       <view class="chip {{createRemindBeforeMin === 30 ? 'chip-active' : ''}}" data-min="30" bindtap="onCreateRemindMinutes">提前30分</view>
       <view class="chip {{createRemindBeforeMin === 60 ? 'chip-active' : ''}}" data-min="60" bindtap="onCreateRemindMinutes">提前60分</view>
     </view>
+
     <button class="button" bindtap="addSchedule">添加日程</button>
   </view>
 
   <view class="card">
-    <view class="row">
-      <view class="section-title" style="margin-bottom:0;">日程列表</view>
-      <text class="muted">总{{summary.total}} / 今日{{summary.today}} / 逾期{{summary.overdue}} / 待提醒{{summary.dueReminder}}</text>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/profile-outlined.svg" mode="aspectFit" />
+        <view class="section-title">日程列表</view>
+      </view>
+      <view class="muted">逾期 {{summary.overdue}} 项</view>
     </view>
-    <view class="chip-group" style="margin: 10rpx 0 8rpx;">
+
+    <view class="chip-group" style="margin-bottom: 10rpx;">
       <view class="chip {{filter === 'all' ? 'chip-active' : ''}}" data-value="all" bindtap="setFilter">全部</view>
       <view class="chip {{filter === 'pending' ? 'chip-active' : ''}}" data-value="pending" bindtap="setFilter">待办</view>
       <view class="chip {{filter === 'today' ? 'chip-active' : ''}}" data-value="today" bindtap="setFilter">今日</view>
       <view class="chip {{filter === 'overdue' ? 'chip-active' : ''}}" data-value="overdue" bindtap="setFilter">逾期</view>
       <view class="chip {{filter === 'done' ? 'chip-active' : ''}}" data-value="done" bindtap="setFilter">已完成</view>
     </view>
+
     <block wx:if="{{displayList.length === 0}}">
       <view class="muted">暂无日程。</view>
     </block>
+
     <block wx:for="{{displayList}}" wx:key="id">
-      <view style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
+      <view class="list-row">
         <view class="row">
-          <view style="flex:1;">
+          <view class="list-main">
             <view class="row" style="justify-content:flex-start; align-items:center;">
               <view class="status-dot {{item.status === 'done' ? 'status-done' : 'status-pending'}}"></view>
               <view>{{item.title}}</view>
@@ -55,14 +97,14 @@
             <view class="badge {{item.status === 'overdue' ? 'high' : (item.status === 'today' ? 'medium' : 'low')}}">
               {{item.status === 'overdue' ? '逾期' : (item.status === 'today' ? '今日' : (item.status === 'done' ? '已完成' : '待办'))}}
             </view>
-            <view class="muted" wx:if="{{item.remindEnabled}}">
-              提醒：{{item.remindBeforeMin === 0 ? '准点' : ('提前' + item.remindBeforeMin + '分钟')}}
-            </view>
+            <view class="muted" wx:if="{{item.remindEnabled}}">提醒：{{item.remindBeforeMin === 0 ? '准点' : ('提前' + item.remindBeforeMin + '分钟')}}</view>
             <view class="muted" wx:else>提醒：已关闭</view>
           </view>
-          <button size="mini" bindtap="toggleDone" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
-          <button size="mini" bindtap="toggleReminder" data-id="{{item.id}}">{{item.remindEnabled ? '关提醒' : '开提醒'}}</button>
-          <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+          <view class="row-actions">
+            <button size="mini" class="small-button" bindtap="toggleDone" data-id="{{item.id}}">{{item.done ? '恢复' : '完成'}}</button>
+            <button size="mini" class="small-button" bindtap="toggleReminder" data-id="{{item.id}}">{{item.remindEnabled ? '关提醒' : '开提醒'}}</button>
+            <button size="mini" class="small-button warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+          </view>
         </view>
         <view class="chip-group" style="margin-top:8rpx;" wx:if="{{!item.done}}">
           <view class="chip {{item.remindEnabled && item.remindBeforeMin === 0 ? 'chip-active' : ''}}" data-id="{{item.id}}" data-min="0" bindtap="setItemReminderMinutes">准点</view>

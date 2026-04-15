@@ -1,14 +1,47 @@
 <view class="container">
-  <view class="row" style="justify-content:flex-end; margin-bottom:10rpx;">
-    <navigator class="chip" url="/pages/data/index">数据管理</navigator>
+  <view class="hero">
+    <view class="hero-head">
+      <view>
+        <view class="hero-main">
+          <view class="hero-icon">
+            <image src="/assets/ant-icons/wallet-outlined.svg" mode="aspectFit" />
+          </view>
+          <view class="hero-title">记账面板</view>
+        </view>
+        <view class="hero-subtitle">把每一笔花销可视化，月底更有掌控感。</view>
+      </view>
+      <navigator class="hero-action" url="/pages/data/index">数据中心</navigator>
+    </view>
+    <view class="kpi-row">
+      <view class="kpi-item">
+        <view class="kpi-label">收入</view>
+        <view class="kpi-value">¥{{summary.income}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">支出</view>
+        <view class="kpi-value">¥{{summary.expense}}</view>
+      </view>
+      <view class="kpi-item">
+        <view class="kpi-label">结余</view>
+        <view class="kpi-value">¥{{summary.balance}}</view>
+      </view>
+    </view>
   </view>
+
   <view class="card">
-    <view class="section-title">新增账单</view>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/plus-outlined.svg" mode="aspectFit" />
+        <view class="section-title">新增账单</view>
+      </view>
+    </view>
+
     <input class="input" placeholder="用途（如 午餐）" value="{{note}}" bindinput="onNote" />
     <view class="chip-group" style="margin-top: 12rpx;">
       <view class="chip {{type === 'expense' ? 'chip-active' : ''}}" data-value="expense" bindtap="onTypeChange">支出</view>
       <view class="chip {{type === 'income' ? 'chip-active' : ''}}" data-value="income" bindtap="onTypeChange">收入</view>
     </view>
+
     <input class="input" style="margin-top:12rpx;" placeholder="分类（如 餐饮/工资）" value="{{category}}" bindinput="onCategory" />
     <view class="chip-group" style="margin-top:10rpx;">
       <view class="chip" data-value="餐饮" bindtap="onQuickCategory">餐饮</view>
@@ -19,41 +52,46 @@
       <view class="chip" data-value="工资" bindtap="onQuickCategory">工资</view>
       <view class="chip" data-value="其他" bindtap="onQuickCategory">其他</view>
     </view>
+
     <picker mode="date" value="{{dateText}}" bindchange="onDateChange" style="margin-top:12rpx;">
       <view class="input picker-like">{{dateText || '选择日期'}}</view>
     </picker>
+
     <input class="input" style="margin-top:12rpx;" placeholder="金额（元）" value="{{amount}}" bindinput="onAmount" type="digit" />
     <button class="button" bindtap="addRecord">添加账单</button>
   </view>
 
   <view class="card">
-    <view class="row">
-      <view class="section-title" style="margin-bottom:0;">账单明细</view>
-      <text class="muted">{{filterMonth ? (filterMonth + ' 月') : '全部月份'}}</text>
+    <view class="section-head">
+      <view class="section-title-wrap">
+        <image class="section-icon" src="/assets/ant-icons/fund-outlined.svg" mode="aspectFit" />
+        <view class="section-title">账单明细</view>
+      </view>
+      <view class="muted">{{filterMonth ? (filterMonth + ' 月') : '全部月份'}}</view>
     </view>
-    <view class="row" style="margin:10rpx 0;">
-      <text class="muted">收入：¥{{summary.income}}</text>
-      <text class="muted">支出：¥{{summary.expense}}</text>
-      <text class="muted">结余：¥{{summary.balance}}</text>
-    </view>
+
     <view class="row" style="justify-content:flex-start; gap:12rpx; margin-bottom:10rpx;">
       <picker mode="date" bindchange="onFilterMonthChange">
         <view class="chip">选择月份</view>
       </picker>
       <view class="chip" wx:if="{{filterMonth}}" bindtap="clearMonthFilter">查看全部</view>
     </view>
+
     <block wx:if="{{displayList.length === 0}}">
       <view class="muted">暂无账单。</view>
     </block>
+
     <block wx:for="{{displayList}}" wx:key="id">
-      <view class="row" style="padding: 12rpx 0; border-bottom: 1rpx solid #f0f2f5;">
-        <view style="flex:1;">
+      <view class="list-row row">
+        <view class="list-main">
           <view class="badge {{item.type === 'income' ? 'low' : 'high'}}">{{item.type === 'income' ? '收入' : '支出'}}</view>
           <view>{{item.note}}</view>
           <view class="muted">{{item.dateText}} {{item.category ? ('· ' + item.category) : ''}}</view>
           <view class="muted">¥{{item.amountText}}</view>
         </view>
-        <button size="mini" type="warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        <view class="row-actions">
+          <button size="mini" class="small-button warn" bindtap="remove" data-id="{{item.id}}">删除</button>
+        </view>
       </view>
     </block>
   </view>

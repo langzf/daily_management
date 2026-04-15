@@ -9,7 +9,7 @@ fs.rmSync(distDir, { recursive: true, force: true });
 fs.mkdirSync(miniDir, { recursive: true });
 fs.mkdirSync(backendDir, { recursive: true });
 
-const miniInclude = ['app.js', 'app.json', 'app.wxss', 'sitemap.json', 'pages', 'utils'];
+const miniInclude = ['app.js', 'app.json', 'app.wxss', 'sitemap.json', 'pages', 'utils', 'assets'];
 for (const item of miniInclude) {
   if (fs.existsSync(item)) {
     fs.cpSync(item, path.join(miniDir, item), { recursive: true });
