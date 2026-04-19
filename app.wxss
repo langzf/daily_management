@@ -1,35 +1,34 @@
 page {
-  --c-bg: #f2f5ff;
+  --c-bg: #eef2ff;
   --c-surface: #ffffff;
-  --c-brand: #175dff;
-  --c-brand-deep: #12369f;
-  --c-accent: #00a6a6;
-  --c-text: #1b2559;
-  --c-subtext: #5d6b98;
-  --c-border: #dfe7ff;
-  --c-danger: #d92d20;
-  --c-success: #17b26a;
-  --shadow-card: 0 16rpx 44rpx rgba(15, 51, 140, 0.09);
-  background:
-    radial-gradient(circle at 12% 0%, rgba(23, 93, 255, 0.18) 0%, rgba(23, 93, 255, 0) 38%),
-    radial-gradient(circle at 100% 16%, rgba(0, 166, 166, 0.15) 0%, rgba(0, 166, 166, 0) 32%),
-    var(--c-bg);
+  --c-surface-soft: #f3f7ff;
+  --c-brand: #2563eb;
+  --c-brand-deep: #1e40af;
+  --c-brand-soft: #e0e7ff;
+  --c-text: #0f172a;
+  --c-subtext: #64748b;
+  --c-border: #dbe3f3;
+  --c-danger: #dc2626;
+  --c-success: #16a34a;
+  --shadow-card: 0 10rpx 28rpx rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, #f8fbff 0%, var(--c-bg) 100%);
   color: var(--c-text);
   font-size: 28rpx;
   font-family: 'Alibaba PuHuiTi 3.0', 'HarmonyOS Sans SC', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
 }
 
 .container {
-  padding: 22rpx;
+  padding: 24rpx;
 }
 
 .hero {
-  border-radius: 28rpx;
-  padding: 26rpx;
-  margin-bottom: 20rpx;
-  background: linear-gradient(136deg, #163fae 0%, #175dff 55%, #20a4b9 100%);
-  color: #ffffff;
-  box-shadow: 0 18rpx 48rpx rgba(22, 63, 174, 0.26);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 18rpx;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  color: var(--c-text);
+  border: 1rpx solid var(--c-border);
+  box-shadow: var(--shadow-card);
 }
 
 .hero-head {
@@ -42,22 +41,22 @@ page {
 .hero-main {
   display: flex;
   align-items: center;
-  gap: 14rpx;
+  gap: 12rpx;
 }
 
 .hero-icon {
-  width: 54rpx;
-  height: 54rpx;
-  border-radius: 14rpx;
-  background: rgba(255, 255, 255, 0.92);
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 12rpx;
+  background: var(--c-brand-soft);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .hero-icon image {
-  width: 34rpx;
-  height: 34rpx;
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .hero-title {
@@ -68,27 +67,26 @@ page {
 
 .hero-subtitle {
   margin-top: 8rpx;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--c-subtext);
   font-size: 24rpx;
 }
 
 .hero-action {
-  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  border: 1rpx solid #c7d7ff;
   border-radius: 999rpx;
-  padding: 8rpx 20rpx;
-  color: #fff;
+  padding: 8rpx 18rpx;
+  color: var(--c-brand-deep);
   font-size: 22rpx;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--c-brand-soft);
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 24rpx;
+  background: var(--c-surface);
+  border-radius: 20rpx;
   padding: 20rpx;
-  margin-bottom: 18rpx;
+  margin-bottom: 16rpx;
   box-shadow: var(--shadow-card);
-  border: 1rpx solid rgba(223, 231, 255, 0.75);
-  backdrop-filter: blur(8rpx);
+  border: 1rpx solid var(--c-border);
 }
 
 .section-head {
@@ -119,7 +117,7 @@ page {
   width: 100%;
   min-height: 76rpx;
   border: 1rpx solid var(--c-border);
-  border-radius: 14rpx;
+  border-radius: 12rpx;
   padding: 0 16rpx;
   box-sizing: border-box;
   background: #ffffff;
@@ -127,22 +125,39 @@ page {
 
 .button {
   margin-top: 16rpx;
-  background: linear-gradient(135deg, var(--c-brand-deep) 0%, var(--c-brand) 70%, #20a4b9 100%);
-  color: #fff;
+  width: 100%;
+  min-height: 78rpx;
+  line-height: 78rpx;
+  padding: 0 20rpx;
+  background: #2f63d6;
+  color: #f8fbff;
   border-radius: 14rpx;
-  border: none;
+  border: 1rpx solid #4a79e0;
+  font-size: 30rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  box-shadow: 0 3rpx 10rpx rgba(37, 99, 235, 0.16);
 }
 
 .button::after {
   border: none;
 }
 
+.button.button-hover {
+  opacity: 0.92;
+  transform: translateY(1rpx);
+}
+
 .button.secondary {
-  background: linear-gradient(135deg, #3557b9 0%, #5f77d2 100%);
+  background: linear-gradient(135deg, #334155 0%, #475569 100%);
+  border-color: #64748b;
+  box-shadow: 0 6rpx 14rpx rgba(51, 65, 85, 0.16);
 }
 
 .button.danger {
-  background: linear-gradient(135deg, #b42318 0%, var(--c-danger) 100%);
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  border-color: #f87171;
+  box-shadow: 0 6rpx 14rpx rgba(220, 38, 38, 0.16);
 }
 
 .row {
@@ -167,16 +182,16 @@ page {
 .chip {
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef2ff;
-  color: #3151a6;
+  background: #f9fbff;
+  color: #334155;
   font-size: 22rpx;
-  border: 1rpx solid #dde6ff;
+  border: 1rpx solid var(--c-border);
 }
 
 .chip-active {
-  background: linear-gradient(135deg, var(--c-brand-deep) 0%, var(--c-brand) 100%);
+  background: var(--c-brand);
   color: #ffffff;
-  border-color: transparent;
+  border-color: var(--c-brand);
 }
 
 .badge {
@@ -188,18 +203,18 @@ page {
 }
 
 .badge.high {
-  background: #ffe5e8;
-  color: #c01048;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .badge.medium {
-  background: #fff1da;
-  color: #a65f00;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .badge.low {
-  background: #e6f7f4;
-  color: #0e7a5f;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .status-dot {
@@ -214,12 +229,16 @@ page {
 }
 
 .status-pending {
-  background: #99a8cf;
+  background: #94a3b8;
 }
 
 .list-row {
-  padding: 14rpx 0;
-  border-bottom: 1rpx solid #eef2ff;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #edf2ff;
+}
+
+.list-row:last-child {
+  border-bottom: none;
 }
 
 .list-main {
@@ -239,45 +258,51 @@ page {
 
 .small-button {
   border-radius: 10rpx;
-  background: #edf3ff;
-  color: #2446a8;
-  border: none;
+  background: #f8fafc;
+  color: #334155;
+  border: 1rpx solid #dbe3f3;
   font-size: 22rpx;
   line-height: 1.4;
   padding: 0 12rpx;
 }
 
 .small-button.warn {
-  background: #ffe9ea;
-  color: #b42318;
+  background: #fff5f5;
+  color: #b91c1c;
+  border-color: #fecaca;
 }
 
 .small-button::after {
   border: none;
 }
 
+.switch-compact {
+  transform: scale(0.86);
+  transform-origin: 100% 50%;
+}
+
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12rpx;
-  margin-top: 12rpx;
+  margin-top: 14rpx;
 }
 
 .kpi-item {
-  border-radius: 14rpx;
-  background: #f5f8ff;
-  border: 1rpx solid #e2eaff;
+  border-radius: 12rpx;
+  background: var(--c-surface-soft);
+  border: 1rpx solid var(--c-border);
   padding: 12rpx;
 }
 
 .kpi-label {
   font-size: 20rpx;
-  color: #6f7fac;
+  color: var(--c-subtext);
 }
 
 .kpi-value {
   font-size: 30rpx;
-  color: #163fae;
+  color: var(--c-brand-deep);
   font-weight: 600;
   margin-top: 4rpx;
 }

@@ -50,7 +50,7 @@
     <view class="row" style="justify-content:flex-start; margin-top:12rpx; gap: 10rpx;">
       <image class="section-icon" src="/assets/ant-icons/bell-outlined.svg" mode="aspectFit" />
       <text class="muted">开启提醒</text>
-      <switch checked="{{createRemindEnabled}}" bindchange="onCreateRemindSwitch" color="#175dff"></switch>
+      <switch class="switch-compact" checked="{{createRemindEnabled}}" bindchange="onCreateRemindSwitch" color="#2563eb"></switch>
     </view>
 
     <view wx:if="{{createRemindEnabled}}" class="chip-group" style="margin-top:10rpx;">
