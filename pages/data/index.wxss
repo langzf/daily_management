@@ -13,7 +13,7 @@
 
 .field-label {
   font-size: 24rpx;
-  color: #374151;
+  color: var(--c-subtext);
   margin-bottom: 8rpx;
 }
 
@@ -30,4 +30,9 @@
 
 .sync-status {
   margin-top: 12rpx;
+}
+
+.auth-line {
+  word-break: break-all;
+  margin-bottom: 4rpx;
 }

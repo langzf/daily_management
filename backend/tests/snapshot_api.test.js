@@ -33,7 +33,8 @@ async function main() {
     env: {
       ...process.env,
       PORT: String(TEST_PORT),
-      DB_PATH: TEST_DB_PATH
+      DB_PATH: TEST_DB_PATH,
+      AUTH_BYPASS: '1'
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -44,8 +45,28 @@ async function main() {
   try {
     await waitForHealth(`http://127.0.0.1:${TEST_PORT}`, 8000);
 
+    const loginResp = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        code: 'integration_user',
+        profile: {
+          nickName: 'Integration User'
+        }
+      })
+    });
+    assert.strictEqual(loginResp.status, 200);
+    const loginBody = await loginResp.json();
+    assert.strictEqual(loginBody.ok, true);
+    assert.strictEqual(!!loginBody.token, true);
+
+    const token = loginBody.token;
+    const authHeader = {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`
+    };
+
     const payload = {
-      userId: 'integration_user',
       data: {
         daily_todos: [
           {
@@ -101,12 +122,16 @@ async function main() {
 
     const putResp = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/snapshot`, {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: authHeader,
       body: JSON.stringify(payload)
     });
     assert.strictEqual(putResp.status, 200);
 
-    const getResp = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/snapshot?userId=integration_user`);
+    const getResp = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/snapshot`, {
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    });
     assert.strictEqual(getResp.status, 200);
 
     const body = await getResp.json();
@@ -116,6 +141,24 @@ async function main() {
     assert.strictEqual(body.data.daily_schedule.length, 1);
     assert.strictEqual(body.data.daily_finance.length, 1);
     assert.strictEqual(body.data.daily_todos[0].text, 'integration-task');
+
+    const meResp = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/auth/me`, {
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    });
+    assert.strictEqual(meResp.status, 200);
+
+    const unauthorizedResp = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/snapshot`);
+    assert.strictEqual(unauthorizedResp.status, 401);
+
+    const logoutResp = await fetch(`http://127.0.0.1:${TEST_PORT}/api/v1/auth/logout`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    });
+    assert.strictEqual(logoutResp.status, 200);
 
     console.log('backend-integration-ok');
   } finally {

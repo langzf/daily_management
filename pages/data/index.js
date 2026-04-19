@@ -1,13 +1,12 @@
 const { getList, setList } = require('../../utils/storage');
+const { getAuthState, clearAuthState, ensureAuthorized, logoutAuthorized } = require('../../utils/auth');
 const {
   DEFAULT_SYNC_BASE_URL,
-  DEFAULT_SYNC_USER_ID,
   getSyncConfig,
   saveSyncConfig: persistSyncConfig,
   getSyncMeta,
   normalizeBaseUrl,
   isValidBaseUrl,
-  isValidUserId,
   uploadSnapshot,
   downloadSnapshot,
   applySnapshotData,
@@ -57,6 +56,11 @@ function normalizePayload(payload) {
   return normalized;
 }
 
+function formatTs(ts) {
+  if (!ts || !Number.isFinite(ts)) return '';
+  return new Date(ts).toISOString().replace('T', ' ').slice(0, 19);
+}
+
 Page({
   data: {
     stats: [],
@@ -64,21 +68,27 @@ Page({
     importText: '',
     lastExportAt: '',
     apiBaseUrl: DEFAULT_SYNC_BASE_URL,
-    apiUserId: DEFAULT_SYNC_USER_ID,
     autoSyncEnabled: true,
     debugSyncMode: false,
     syncStatus: '',
-    lastSyncAt: ''
+    lastSyncAt: '',
+    authStatus: '未登录',
+    authUserId: '',
+    authOpenId: '',
+    authExpireAt: ''
   },
 
   onShow() {
     this.loadSyncConfig();
     this.refreshStats();
     this.refreshSyncMeta();
+    this.refreshAuthMeta();
 
+    this.ensureAuthSilently(false);
     tryInitialPull().then(() => {
       this.refreshStats();
       this.refreshSyncMeta();
+      this.refreshAuthMeta();
     });
   },
 
@@ -86,7 +96,6 @@ Page({
     const config = getSyncConfig();
     this.setData({
       apiBaseUrl: config.baseUrl || DEFAULT_SYNC_BASE_URL,
-      apiUserId: config.userId || DEFAULT_SYNC_USER_ID,
       autoSyncEnabled: !!config.autoSyncEnabled,
       debugSyncMode: !!config.debugMode
     });
@@ -102,6 +111,72 @@ Page({
       syncStatus: meta.lastStatus || '',
       lastSyncAt: meta.lastSuccessAt || ''
     });
+  },
+
+  refreshAuthMeta() {
+    const auth = getAuthState();
+    const user = (auth && auth.user) || {};
+    const hasToken = !!(auth && auth.token);
+    const hasUser = !!(user && user.userId);
+    const status = hasUser ? '已授权登录' : hasToken ? '会话待刷新' : '未登录';
+
+    this.setData({
+      authStatus: status,
+      authUserId: hasUser ? String(user.userId || '') : '',
+      authOpenId: hasUser ? String(user.openId || '') : '',
+      authExpireAt: auth && auth.expiresAt ? formatTs(auth.expiresAt) : ''
+    });
+  },
+
+  ensureAuthSilently(force) {
+    const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
+    if (!isValidBaseUrl(apiBaseUrl)) {
+      return Promise.resolve({ skipped: true, reason: 'invalid-base-url' });
+    }
+
+    return ensureAuthorized({ baseUrl: apiBaseUrl, force: !!force })
+      .then(() => {
+        this.refreshAuthMeta();
+      })
+      .catch((err) => {
+        this.refreshAuthMeta();
+        return { ok: false, error: (err && err.message) || '授权失败' };
+      });
+  },
+
+  reauthLogin() {
+    const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
+    if (!isValidBaseUrl(apiBaseUrl)) {
+      wx.showToast({ title: '请先填写有效API地址', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '授权中', mask: true });
+    ensureAuthorized({ baseUrl: apiBaseUrl, force: true })
+      .then(() => {
+        this.refreshAuthMeta();
+        wx.showToast({ title: '授权成功', icon: 'success' });
+      })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.message) || '授权失败', icon: 'none' });
+      })
+      .finally(() => {
+        wx.hideLoading();
+      });
+  },
+
+  logoutLogin() {
+    const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
+    wx.showLoading({ title: '退出中', mask: true });
+    logoutAuthorized({ baseUrl: apiBaseUrl })
+      .catch(() => {
+        clearAuthState();
+      })
+      .finally(() => {
+        this.refreshAuthMeta();
+        wx.hideLoading();
+        wx.showToast({ title: '已退出登录', icon: 'success' });
+      });
   },
 
   generateExport() {
@@ -138,10 +213,6 @@ Page({
     this.setData({ apiBaseUrl: e.detail.value || '' });
   },
 
-  onApiUserIdInput(e) {
-    this.setData({ apiUserId: e.detail.value || '' });
-  },
-
   onAutoSyncChange(e) {
     this.setData({ autoSyncEnabled: !!e.detail.value });
   },
@@ -151,8 +222,8 @@ Page({
   },
 
   saveSyncConfig() {
+    const oldConfig = getSyncConfig();
     const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
-    const apiUserId = String(this.data.apiUserId || '').trim();
     const autoSyncEnabled = !!this.data.autoSyncEnabled;
     const debugSyncMode = !!this.data.debugSyncMode;
 
@@ -160,34 +231,34 @@ Page({
       wx.showToast({ title: 'API地址需以 http/https 开头', icon: 'none' });
       return;
     }
-    if (!isValidUserId(apiUserId)) {
-      wx.showToast({ title: 'userId 仅支持字母数字_-', icon: 'none' });
-      return;
-    }
 
     const saved = persistSyncConfig({
       baseUrl: apiBaseUrl,
-      userId: apiUserId,
       autoSyncEnabled,
       debugMode: debugSyncMode
     });
 
+    if (normalizeBaseUrl(oldConfig.baseUrl) !== normalizeBaseUrl(saved.baseUrl)) {
+      clearAuthState();
+    }
+
     this.setData({
       apiBaseUrl: saved.baseUrl,
-      apiUserId: saved.userId,
       autoSyncEnabled: saved.autoSyncEnabled,
       debugSyncMode: saved.debugMode
     });
 
     wx.showToast({ title: '同步配置已保存', icon: 'success' });
 
-    if (saved.autoSyncEnabled) {
-      flushUpload('config-save').then(() => {
+    this.ensureAuthSilently(false).then(() => {
+      if (saved.autoSyncEnabled) {
+        flushUpload('config-save').then(() => {
+          this.refreshSyncMeta();
+        });
+      } else {
         this.refreshSyncMeta();
-      });
-    } else {
-      this.refreshSyncMeta();
-    }
+      }
+    });
   },
 
   debugUploadNow() {
@@ -195,6 +266,7 @@ Page({
     uploadSnapshot({ reason: 'debug-manual', ignoreAutoGate: true })
       .then(() => {
         this.refreshSyncMeta();
+        this.refreshAuthMeta();
         wx.showToast({ title: '同步完成', icon: 'success' });
       })
       .catch((err) => {
@@ -207,15 +279,13 @@ Page({
 
   debugDownloadNow() {
     const apiBaseUrl = normalizeBaseUrl(this.data.apiBaseUrl);
-    const apiUserId = String(this.data.apiUserId || '').trim();
-
-    if (!isValidBaseUrl(apiBaseUrl) || !isValidUserId(apiUserId)) {
+    if (!isValidBaseUrl(apiBaseUrl)) {
       wx.showToast({ title: '请先保存有效同步配置', icon: 'none' });
       return;
     }
 
     wx.showLoading({ title: '下载中', mask: true });
-    downloadSnapshot({ baseUrl: apiBaseUrl, userId: apiUserId })
+    downloadSnapshot({ baseUrl: apiBaseUrl })
       .then((resp) => {
         wx.showModal({
           title: '确认覆盖',
@@ -225,6 +295,7 @@ Page({
             applySnapshotData(resp.data || {});
             this.refreshStats();
             this.refreshSyncMeta();
+            this.refreshAuthMeta();
             wx.showToast({ title: '恢复完成', icon: 'success' });
           }
         });

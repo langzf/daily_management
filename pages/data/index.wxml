@@ -68,17 +68,25 @@
     <view class="field-label">API 地址</view>
     <input class="input" value="{{apiBaseUrl}}" placeholder="例如 http://127.0.0.1:8787" bindinput="onApiBaseUrlInput" />
 
-    <view class="field-label" style="margin-top: 12rpx;">用户 ID</view>
-    <input class="input" value="{{apiUserId}}" placeholder="例如 demo_user" bindinput="onApiUserIdInput" />
+    <view class="field-label" style="margin-top: 12rpx;">登录状态</view>
+    <view class="muted auth-line">状态：{{authStatus}}</view>
+    <view class="muted auth-line" wx:if="{{authUserId}}">用户ID：{{authUserId}}</view>
+    <view class="muted auth-line" wx:if="{{authOpenId}}">OpenID：{{authOpenId}}</view>
+    <view class="muted auth-line" wx:if="{{authExpireAt}}">会话过期：{{authExpireAt}}</view>
+
+    <view class="row sync-actions">
+      <button size="mini" class="small-button" bindtap="reauthLogin">重新授权登录</button>
+      <button size="mini" class="small-button warn" bindtap="logoutLogin">退出登录</button>
+    </view>
 
     <view class="row switch-row">
       <text>启用自动同步</text>
-      <switch checked="{{autoSyncEnabled}}" bindchange="onAutoSyncChange" color="#175dff" />
+      <switch class="switch-compact" checked="{{autoSyncEnabled}}" bindchange="onAutoSyncChange" color="#2563eb" />
     </view>
 
     <view class="row switch-row">
       <text>调试模式（显示手动按钮）</text>
-      <switch checked="{{debugSyncMode}}" bindchange="onDebugSyncModeChange" color="#175dff" />
+      <switch class="switch-compact" checked="{{debugSyncMode}}" bindchange="onDebugSyncModeChange" color="#2563eb" />
     </view>
 
     <view class="row sync-actions">

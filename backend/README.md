@@ -9,17 +9,24 @@ node backend/src/server.js
 
 Default URL: `http://127.0.0.1:8787`
 
+Auth mode:
+
+- Production WeChat auth (default): set `WECHAT_APP_ID` and `WECHAT_APP_SECRET`
+- Local integration test bypass: set `AUTH_BYPASS=1`
+
 ## API
 
 - `GET /health`
-- `GET /api/v1/snapshot?userId=<user-id>`
-- `PUT /api/v1/snapshot`
+- `POST /api/v1/auth/login` (body: `{ "code": "wx.login.code" }`)
+- `GET /api/v1/auth/me` (header: `Authorization: Bearer <token>`)
+- `POST /api/v1/auth/logout` (header: `Authorization: Bearer <token>`)
+- `GET /api/v1/snapshot` (header: `Authorization: Bearer <token>`)
+- `PUT /api/v1/snapshot` (header: `Authorization: Bearer <token>`)
 
 PUT payload example:
 
 ```json
 {
-  "userId": "demo_user",
   "data": {
     "daily_todos": [],
     "daily_habits": [],
@@ -34,6 +41,7 @@ PUT payload example:
 - Engine: SQLite
 - DB path (default): `backend/data/daily_management.sqlite`
 - Schema file: `backend/db/schema.sql`
+- Auth tables: `users`, `user_sessions`
 
 ## Logs
 

@@ -10,6 +10,7 @@ const required = [
   'pages/data/index.js',
   'pages/data/index.wxml',
   'assets/ant-icons/check-square-outlined.svg',
+  'utils/auth.js',
   'utils/sync.js',
   'backend/src/server.js',
   'backend/db/schema.sql',

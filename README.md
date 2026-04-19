@@ -9,6 +9,7 @@ A personal daily management WeChat Mini Program with four core modules:
 - Data Backup/Restore
 - Local Reminder Notifications
 - Backend Auto Sync (optional)
+- WeChat authorized login + backend session auth
 - Refreshed UI with Alibaba open-source Ant Design icons
 
 ## Project Directory (Single Source of Truth)
@@ -37,6 +38,12 @@ npm run backend:start
 - Default URL: `http://127.0.0.1:8787`
 - Database: `backend/data/daily_management.sqlite`
 - Schema: `backend/db/schema.sql`
+
+Optional auth env vars:
+
+- `WECHAT_APP_ID=<your-mini-program-appid>`
+- `WECHAT_APP_SECRET=<your-mini-program-secret>`
+- `AUTH_BYPASS=1` (only for local testing; do not enable in production)
 
 ## Auto Sync Behavior
 

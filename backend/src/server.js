@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const http = require('http');
+const https = require('https');
 const path = require('path');
 const crypto = require('crypto');
 const { URL } = require('url');
@@ -16,6 +17,11 @@ const ACCESS_LOG_PATH = process.env.ACCESS_LOG_PATH || path.join(LOG_DIR, 'acces
 const ERROR_LOG_PATH = process.env.ERROR_LOG_PATH || path.join(LOG_DIR, 'error.log');
 const PORT = Number(process.env.PORT || 8787);
 const BODY_LIMIT_BYTES = 2 * 1024 * 1024;
+const SESSION_TTL_SECONDS = Math.max(3600, Number(process.env.SESSION_TTL_SECONDS || 30 * 24 * 3600));
+const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
+const AUTH_BYPASS = process.env.AUTH_BYPASS === '1';
+const WECHAT_APP_ID = String(process.env.WECHAT_APP_ID || '').trim();
+const WECHAT_APP_SECRET = String(process.env.WECHAT_APP_SECRET || '').trim();
 
 const SNAPSHOT_KEYS = ['daily_todos', 'daily_habits', 'daily_schedule', 'daily_finance'];
 
@@ -27,6 +33,34 @@ const schemaSQL = fs.readFileSync(SCHEMA_PATH, 'utf8');
 db.exec(schemaSQL);
 
 const statements = {
+  selectUserByOpenid: db.prepare(
+    'SELECT user_id, openid, unionid, nickname, avatar_url, created_at, updated_at, last_login_at FROM users WHERE openid = ?'
+  ),
+  selectUserById: db.prepare(
+    'SELECT user_id, openid, unionid, nickname, avatar_url, created_at, updated_at, last_login_at FROM users WHERE user_id = ?'
+  ),
+  insertUser: db.prepare(
+    'INSERT INTO users (user_id, openid, unionid, nickname, avatar_url, created_at, updated_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ),
+  updateUserAuthProfile: db.prepare(
+    'UPDATE users SET unionid = ?, nickname = ?, avatar_url = ?, last_login_at = ?, updated_at = ? WHERE user_id = ?'
+  ),
+  insertSession: db.prepare(
+    'INSERT INTO user_sessions (session_id, user_id, token_hash, expires_at, revoked, created_at, last_seen_at) VALUES (?, ?, ?, ?, 0, ?, ?)'
+  ),
+  revokeSessionByTokenHash: db.prepare('UPDATE user_sessions SET revoked = 1 WHERE token_hash = ?'),
+  revokeSessionsByUser: db.prepare('UPDATE user_sessions SET revoked = 1 WHERE user_id = ? AND revoked = 0'),
+  updateSessionLastSeen: db.prepare('UPDATE user_sessions SET last_seen_at = ? WHERE session_id = ?'),
+  deleteExpiredSessions: db.prepare('DELETE FROM user_sessions WHERE expires_at <= ? OR revoked = 1'),
+  selectSessionByTokenHash: db.prepare(
+    [
+      'SELECT s.session_id, s.user_id, s.token_hash, s.expires_at, s.revoked, s.created_at, s.last_seen_at,',
+      'u.openid, u.unionid, u.nickname, u.avatar_url',
+      'FROM user_sessions s JOIN users u ON u.user_id = s.user_id',
+      'WHERE s.token_hash = ? LIMIT 1'
+    ].join(' ')
+  ),
+
   deleteTodos: db.prepare('DELETE FROM todos WHERE user_id = ?'),
   deleteHabits: db.prepare('DELETE FROM habits WHERE user_id = ?'),
   deleteSchedules: db.prepare('DELETE FROM schedules WHERE user_id = ?'),
@@ -68,6 +102,18 @@ class HttpError extends Error {
 
 function createRequestId() {
   return crypto.randomUUID();
+}
+
+function createUserId() {
+  return `u_${crypto.randomBytes(12).toString('hex')}`;
+}
+
+function createSessionToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value || ''), 'utf8').digest('hex');
 }
 
 function appendLog(filePath, event) {
@@ -137,12 +183,236 @@ function formatMonth(dateText, timestamp) {
   return new Date().toISOString().slice(0, 7);
 }
 
-function normalizeUserId(value) {
-  const userId = toText(value, 64);
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(userId)) {
-    throw new HttpError(400, 'invalid userId: only letters, numbers, _ and - are allowed');
+function normalizeLoginCode(value) {
+  const code = toText(value, 256);
+  if (!code || /\s/.test(code)) {
+    throw new HttpError(400, 'invalid login code');
   }
-  return userId;
+  return code;
+}
+
+function sanitizeProfile(profile) {
+  if (!isObject(profile)) {
+    return {
+      nickname: '',
+      avatarUrl: ''
+    };
+  }
+  return {
+    nickname: toText(profile.nickName || profile.nickname, 80),
+    avatarUrl: toText(profile.avatarUrl || profile.avatarURL, 512)
+  };
+}
+
+function toClientUser(userRow) {
+  if (!userRow) return null;
+  return {
+    userId: userRow.user_id,
+    openId: userRow.openid,
+    nickname: userRow.nickname || '',
+    avatarUrl: userRow.avatar_url || ''
+  };
+}
+
+function cleanupSessions(nowTs) {
+  const now = Number(nowTs || Date.now());
+  statements.deleteExpiredSessions.run(now);
+}
+
+function createOrRefreshSession(userId, nowTs) {
+  const now = Number(nowTs || Date.now());
+  const token = createSessionToken();
+  const tokenHash = sha256(token);
+  const expiresAt = now + SESSION_TTL_MS;
+  const sessionId = `s_${crypto.randomUUID()}`;
+  statements.revokeSessionsByUser.run(userId);
+  statements.insertSession.run(sessionId, userId, tokenHash, expiresAt, now, now);
+  return {
+    token,
+    tokenHash,
+    expiresAt
+  };
+}
+
+function upsertUserAndIssueSession(wxSession, profile) {
+  const now = Date.now();
+  const openid = toText(wxSession && wxSession.openid, 128);
+  const unionid = toText(wxSession && wxSession.unionid, 128);
+  if (!openid) {
+    throw new HttpError(401, 'missing openid from wechat');
+  }
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    let user = statements.selectUserByOpenid.get(openid);
+    if (!user) {
+      const userId = createUserId();
+      statements.insertUser.run(
+        userId,
+        openid,
+        unionid,
+        profile.nickname || '',
+        profile.avatarUrl || '',
+        now,
+        now,
+        now
+      );
+      user = statements.selectUserById.get(userId);
+    } else {
+      statements.updateUserAuthProfile.run(
+        unionid || user.unionid || '',
+        profile.nickname || user.nickname || '',
+        profile.avatarUrl || user.avatar_url || '',
+        now,
+        now,
+        user.user_id
+      );
+      user = statements.selectUserById.get(user.user_id);
+    }
+
+    cleanupSessions(now);
+    const session = createOrRefreshSession(user.user_id, now);
+    db.exec('COMMIT');
+
+    return {
+      token: session.token,
+      expiresAt: session.expiresAt,
+      user: toClientUser(user)
+    };
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+function exchangeCodeByBypass(code) {
+  const normalized = normalizeLoginCode(code);
+  return {
+    openid: `test_openid_${normalized}`,
+    unionid: ''
+  };
+}
+
+function exchangeCodeByWechat(code) {
+  if (!WECHAT_APP_ID || !WECHAT_APP_SECRET) {
+    throw new HttpError(500, 'wechat app credentials are not configured');
+  }
+
+  const apiUrl = new URL('https://api.weixin.qq.com/sns/jscode2session');
+  apiUrl.searchParams.set('appid', WECHAT_APP_ID);
+  apiUrl.searchParams.set('secret', WECHAT_APP_SECRET);
+  apiUrl.searchParams.set('js_code', code);
+  apiUrl.searchParams.set('grant_type', 'authorization_code');
+
+  return new Promise((resolve, reject) => {
+    let finished = false;
+    function done(err, value) {
+      if (finished) return;
+      finished = true;
+      if (err) reject(err);
+      else resolve(value);
+    }
+
+    const req = https.get(apiUrl, (resp) => {
+      let raw = '';
+      resp.on('data', (chunk) => {
+        raw += chunk;
+        if (Buffer.byteLength(raw) > BODY_LIMIT_BYTES) {
+          req.destroy(new Error('wechat response too large'));
+        }
+      });
+      resp.on('end', () => {
+        if (resp.statusCode < 200 || resp.statusCode >= 300) {
+          done(new HttpError(502, `wechat api http status ${resp.statusCode}`));
+          return;
+        }
+        let body;
+        try {
+          body = JSON.parse(raw || '{}');
+        } catch (err) {
+          done(new HttpError(502, 'wechat api returned invalid json'));
+          return;
+        }
+
+        const errcode = Number(body.errcode || 0);
+        if (errcode !== 0) {
+          done(new HttpError(401, `wechat login failed: ${body.errmsg || errcode}`));
+          return;
+        }
+        if (!body.openid) {
+          done(new HttpError(502, 'wechat login failed: openid missing'));
+          return;
+        }
+
+        done(null, {
+          openid: toText(body.openid, 128),
+          unionid: toText(body.unionid, 128)
+        });
+      });
+      resp.on('error', (err) => {
+        done(new HttpError(502, `wechat response error: ${err.message}`));
+      });
+    });
+
+    req.setTimeout(7000, () => {
+      req.destroy(new Error('wechat api timeout'));
+    });
+    req.on('error', (err) => {
+      done(new HttpError(502, `wechat request error: ${err.message}`));
+    });
+  });
+}
+
+function exchangeCodeForSession(code) {
+  const normalized = normalizeLoginCode(code);
+  if (AUTH_BYPASS) {
+    return Promise.resolve(exchangeCodeByBypass(normalized));
+  }
+  return exchangeCodeByWechat(normalized);
+}
+
+function extractBearerToken(authorizationValue) {
+  const raw = toText(authorizationValue, 2048);
+  if (!raw) return '';
+  const match = raw.match(/^Bearer\s+(.+)$/i);
+  if (!match) return '';
+  return toText(match[1], 2048);
+}
+
+function requireAuth(req) {
+  cleanupSessions(Date.now());
+  const token = extractBearerToken(req.headers.authorization);
+  if (!token) {
+    throw new HttpError(401, 'missing bearer token');
+  }
+
+  const tokenHash = sha256(token);
+  const session = statements.selectSessionByTokenHash.get(tokenHash);
+  if (!session || session.revoked === 1) {
+    throw new HttpError(401, 'invalid session');
+  }
+
+  const now = Date.now();
+  if (session.expires_at <= now) {
+    statements.revokeSessionByTokenHash.run(tokenHash);
+    throw new HttpError(401, 'session expired');
+  }
+
+  if (now - Number(session.last_seen_at || 0) > 60 * 1000) {
+    statements.updateSessionLastSeen.run(now, session.session_id);
+  }
+
+  req.authTokenHash = tokenHash;
+  req.authSessionId = session.session_id;
+  req.logUserId = session.user_id;
+  req.authUser = toClientUser(session);
+  req.authExpiresAt = session.expires_at;
+
+  return {
+    user: req.authUser,
+    sessionId: req.authSessionId,
+    expiresAt: req.authExpiresAt
+  };
 }
 
 function normalizeSnapshotData(data) {
@@ -338,8 +608,8 @@ function sendJson(res, statusCode, payload) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(text),
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,PUT,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Methods': 'GET,PUT,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Request-Id'
   });
   res.end(text);
 }
@@ -347,8 +617,8 @@ function sendJson(res, statusCode, payload) {
 function sendNoContent(res, statusCode) {
   res.writeHead(statusCode, {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,PUT,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Methods': 'GET,PUT,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Request-Id'
   });
   res.end();
 }
@@ -356,15 +626,19 @@ function sendNoContent(res, statusCode) {
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     let raw = '';
+    let ended = false;
 
     req.on('data', (chunk) => {
+      if (ended) return;
       raw += chunk;
       if (Buffer.byteLength(raw) > BODY_LIMIT_BYTES) {
+        ended = true;
         reject(new HttpError(413, 'request body too large'));
       }
     });
 
     req.on('end', () => {
+      if (ended) return;
       if (!raw) {
         reject(new HttpError(400, 'request body is empty'));
         return;
@@ -397,43 +671,88 @@ async function handleRequest(req, res) {
       ok: true,
       service: 'daily-management-backend',
       dbPath: DB_PATH,
+      authBypass: AUTH_BYPASS,
+      sessionTtlSeconds: SESSION_TTL_SECONDS,
       time: new Date().toISOString()
     });
     return;
   }
 
-  if (url.pathname === '/api/v1/snapshot' && method === 'GET') {
-    const userId = normalizeUserId(url.searchParams.get('userId'));
-    req.logRoute = 'snapshot:get';
-    req.logUserId = userId;
+  if (url.pathname === '/api/v1/auth/login' && method === 'POST') {
+    req.logRoute = 'auth:login';
+    const body = await readJsonBody(req);
+    if (!isObject(body)) {
+      throw new HttpError(400, 'request body must be an object');
+    }
+    const code = normalizeLoginCode(body.code);
+    const profile = sanitizeProfile(body.profile);
+    const wxSession = await exchangeCodeForSession(code);
+    const result = upsertUserAndIssueSession(wxSession, profile);
+    req.logUserId = result.user.userId;
     sendJson(res, 200, {
       ok: true,
-      userId,
-      data: loadSnapshot(userId),
+      authMode: AUTH_BYPASS ? 'bypass' : 'wechat',
+      tokenType: 'Bearer',
+      token: result.token,
+      expiresAt: new Date(result.expiresAt).toISOString(),
+      user: result.user
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/v1/auth/me' && method === 'GET') {
+    req.logRoute = 'auth:me';
+    const auth = requireAuth(req);
+    sendJson(res, 200, {
+      ok: true,
+      user: auth.user,
+      expiresAt: new Date(auth.expiresAt).toISOString()
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/v1/auth/logout' && method === 'POST') {
+    req.logRoute = 'auth:logout';
+    requireAuth(req);
+    statements.revokeSessionByTokenHash.run(req.authTokenHash);
+    sendJson(res, 200, {
+      ok: true,
+      loggedOutAt: new Date().toISOString()
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/v1/snapshot' && method === 'GET') {
+    req.logRoute = 'snapshot:get';
+    const auth = requireAuth(req);
+    sendJson(res, 200, {
+      ok: true,
+      userId: auth.user.userId,
+      data: loadSnapshot(auth.user.userId),
       fetchedAt: new Date().toISOString()
     });
     return;
   }
 
   if (url.pathname === '/api/v1/snapshot' && method === 'PUT') {
+    req.logRoute = 'snapshot:put';
+    const auth = requireAuth(req);
     const body = await readJsonBody(req);
     if (!isObject(body)) {
       throw new HttpError(400, 'request body must be an object');
     }
-    const userId = normalizeUserId(body.userId);
-    const snapshot = normalizeSnapshotData(body.data);
-    req.logRoute = 'snapshot:put';
-    req.logUserId = userId;
+    const payloadData = isObject(body.data) ? body.data : body;
+    const snapshot = normalizeSnapshotData(payloadData);
     req.logSnapshotCounts = {
       daily_todos: snapshot.daily_todos.length,
       daily_habits: snapshot.daily_habits.length,
       daily_schedule: snapshot.daily_schedule.length,
       daily_finance: snapshot.daily_finance.length
     };
-    saveSnapshot(userId, snapshot);
+    saveSnapshot(auth.user.userId, snapshot);
     sendJson(res, 200, {
       ok: true,
-      userId,
+      userId: auth.user.userId,
       counts: req.logSnapshotCounts,
       savedAt: new Date().toISOString()
     });
@@ -500,6 +819,7 @@ server.listen(PORT, () => {
   console.log(`backend-db: ${DB_PATH}`);
   console.log(`backend-access-log: ${ACCESS_LOG_PATH}`);
   console.log(`backend-error-log: ${ERROR_LOG_PATH}`);
+  console.log(`auth-mode: ${AUTH_BYPASS ? 'bypass' : 'wechat'}`);
 });
 
 process.on('SIGINT', () => {

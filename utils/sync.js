@@ -1,14 +1,14 @@
+const { ensureAuthorized, clearAuthState } = require('./auth');
+
 const DATA_KEYS = ['daily_todos', 'daily_habits', 'daily_schedule', 'daily_finance'];
 
 const SYNC_BASE_URL_KEY = 'daily_sync_base_url';
-const SYNC_USER_ID_KEY = 'daily_sync_user_id';
 const SYNC_AUTO_ENABLED_KEY = 'daily_sync_auto_enabled';
 const SYNC_DEBUG_MODE_KEY = 'daily_sync_debug_mode';
 const SYNC_LAST_STATUS_KEY = 'daily_sync_last_status';
 const SYNC_LAST_SUCCESS_AT_KEY = 'daily_sync_last_success_at';
 
 const DEFAULT_SYNC_BASE_URL = 'http://127.0.0.1:8787';
-const DEFAULT_SYNC_USER_ID = 'demo_user';
 const DEFAULT_AUTO_ENABLED = true;
 const DEFAULT_DEBUG_MODE = false;
 const AUTO_UPLOAD_DELAY_MS = 2500;
@@ -47,10 +47,6 @@ function isValidBaseUrl(baseUrl) {
   return /^https?:\/\//.test(String(baseUrl || ''));
 }
 
-function isValidUserId(userId) {
-  return /^[A-Za-z0-9_-]{1,64}$/.test(String(userId || ''));
-}
-
 function toBoolean(value, fallback) {
   if (value === undefined || value === null) return fallback;
   return !!value;
@@ -59,7 +55,6 @@ function toBoolean(value, fallback) {
 function getSyncConfig() {
   return {
     baseUrl: normalizeBaseUrl(getStorageValue(SYNC_BASE_URL_KEY, DEFAULT_SYNC_BASE_URL)),
-    userId: String(getStorageValue(SYNC_USER_ID_KEY, DEFAULT_SYNC_USER_ID) || '').trim(),
     autoSyncEnabled: toBoolean(getStorageValue(SYNC_AUTO_ENABLED_KEY, DEFAULT_AUTO_ENABLED), DEFAULT_AUTO_ENABLED),
     debugMode: toBoolean(getStorageValue(SYNC_DEBUG_MODE_KEY, DEFAULT_DEBUG_MODE), DEFAULT_DEBUG_MODE)
   };
@@ -68,12 +63,10 @@ function getSyncConfig() {
 function saveSyncConfig(config) {
   const next = config || {};
   const baseUrl = normalizeBaseUrl(next.baseUrl);
-  const userId = String(next.userId || '').trim();
   const autoSyncEnabled = toBoolean(next.autoSyncEnabled, DEFAULT_AUTO_ENABLED);
   const debugMode = toBoolean(next.debugMode, DEFAULT_DEBUG_MODE);
 
   setStorageValue(SYNC_BASE_URL_KEY, baseUrl || DEFAULT_SYNC_BASE_URL);
-  setStorageValue(SYNC_USER_ID_KEY, userId || DEFAULT_SYNC_USER_ID);
   setStorageValue(SYNC_AUTO_ENABLED_KEY, autoSyncEnabled);
   setStorageValue(SYNC_DEBUG_MODE_KEY, debugMode);
 
@@ -82,7 +75,7 @@ function saveSyncConfig(config) {
 
 function isSyncConfigValid(config) {
   const cfg = config || getSyncConfig();
-  return isValidBaseUrl(cfg.baseUrl) && isValidUserId(cfg.userId);
+  return isValidBaseUrl(cfg.baseUrl);
 }
 
 function normalizeSnapshotData(data) {
@@ -123,7 +116,7 @@ function getSyncMeta() {
   };
 }
 
-function requestJSON({ url, method, data }) {
+function requestJSON({ url, method, data, headers }) {
   const wxObj = getWx();
   if (!wxObj || typeof wxObj.request !== 'function') {
     return Promise.reject(new Error('wx.request is unavailable'));
@@ -134,6 +127,7 @@ function requestJSON({ url, method, data }) {
       url,
       method,
       data,
+      header: headers || {},
       timeout: 8000,
       success: (resp) => {
         const body = resp.data || {};
@@ -141,7 +135,9 @@ function requestJSON({ url, method, data }) {
           resolve(body);
           return;
         }
-        reject(new Error(body.error || `request failed: ${resp.statusCode}`));
+        const err = new Error(body.error || `request failed: ${resp.statusCode}`);
+        err.statusCode = resp.statusCode;
+        reject(err);
       },
       fail: (err) => {
         reject(new Error((err && err.errMsg) || 'request failed'));
@@ -176,6 +172,37 @@ function applySnapshotData(data) {
   return normalized;
 }
 
+function requestWithAuth(cfg, requestPayload, retryLeft) {
+  const attempts = Number.isFinite(retryLeft) ? retryLeft : 1;
+  return ensureAuthorized({ baseUrl: cfg.baseUrl })
+    .then((auth) =>
+      requestJSON({
+        ...requestPayload,
+        headers: {
+          Authorization: `Bearer ${auth.token}`
+        }
+      })
+    )
+    .catch((err) => {
+      if (err && err.statusCode === 401 && attempts > 0) {
+        clearAuthState();
+        return ensureAuthorized({ baseUrl: cfg.baseUrl, force: true })
+          .then((auth) =>
+            requestJSON({
+              ...requestPayload,
+              headers: {
+                Authorization: `Bearer ${auth.token}`
+              }
+            })
+          )
+          .catch((retryErr) => {
+            throw retryErr;
+          });
+      }
+      throw err;
+    });
+}
+
 function uploadSnapshot(options) {
   const opt = options || {};
   const reason = opt.reason || 'manual';
@@ -191,14 +218,17 @@ function uploadSnapshot(options) {
 
   uploadInFlight = true;
 
-  return requestJSON({
-    url: `${cfg.baseUrl}/api/v1/snapshot`,
-    method: 'PUT',
-    data: {
-      userId: cfg.userId,
-      data: buildSnapshotData()
-    }
-  })
+  return requestWithAuth(
+    cfg,
+    {
+      url: `${cfg.baseUrl}/api/v1/snapshot`,
+      method: 'PUT',
+      data: {
+        data: buildSnapshotData()
+      }
+    },
+    1
+  )
     .then((resp) => {
       if (!resp || resp.ok !== true) {
         throw new Error((resp && resp.error) || '后端返回异常');
@@ -265,20 +295,24 @@ function flushUpload(reason) {
 
 function downloadSnapshot(options) {
   const opt = options || {};
+  const baseConfig = getSyncConfig();
   const cfg = {
-    ...getSyncConfig(),
-    baseUrl: normalizeBaseUrl(opt.baseUrl || getSyncConfig().baseUrl),
-    userId: String(opt.userId || getSyncConfig().userId || '').trim()
+    ...baseConfig,
+    baseUrl: normalizeBaseUrl(opt.baseUrl || baseConfig.baseUrl)
   };
 
   if (!isSyncConfigValid(cfg)) {
     return Promise.reject(new Error('同步配置不完整'));
   }
 
-  return requestJSON({
-    url: `${cfg.baseUrl}/api/v1/snapshot?userId=${encodeURIComponent(cfg.userId)}`,
-    method: 'GET'
-  }).then((resp) => {
+  return requestWithAuth(
+    cfg,
+    {
+      url: `${cfg.baseUrl}/api/v1/snapshot`,
+      method: 'GET'
+    },
+    1
+  ).then((resp) => {
     if (!resp || resp.ok !== true) {
       throw new Error((resp && resp.error) || '后端返回异常');
     }
@@ -306,7 +340,7 @@ function tryInitialPull() {
     return Promise.resolve({ skipped: true, reason: 'local-data-exists' });
   }
 
-  return downloadSnapshot({ baseUrl: cfg.baseUrl, userId: cfg.userId })
+  return downloadSnapshot({ baseUrl: cfg.baseUrl })
     .then((resp) => {
       applySnapshotData(resp.data);
       const ts = resp.fetchedAt || new Date().toISOString();
@@ -324,13 +358,11 @@ function tryInitialPull() {
 module.exports = {
   DATA_KEYS,
   DEFAULT_SYNC_BASE_URL,
-  DEFAULT_SYNC_USER_ID,
   getSyncConfig,
   saveSyncConfig,
   isSyncConfigValid,
   normalizeBaseUrl,
   isValidBaseUrl,
-  isValidUserId,
   normalizeSnapshotData,
   buildSnapshotData,
   getSyncMeta,
